@@ -14,19 +14,25 @@ function main() {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec4 aVertexColor;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
+    varying lowp vec4 vColor;
+
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      vColor = aVertexColor;
     }
   `;
 
   // Fragement shader
   const fsSource = `
+    varying lowp vec4 vColor;
+
     void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+      gl_FragColor = vColor;
     }
   `;
 
@@ -70,29 +76,40 @@ function main() {
   }
 
   function initBuffers(gl) {
+    // create array of positions for the square
+    const positions = [
+       1,  1,
+      -1,  1,
+       1, -1,
+      -1, -1,
+    ];
+
     // create a buffer for the square's positions
     const positionBuffer = gl.createBuffer();
 
     // select the positionBuffer as the one to apply buffer operations to
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-    // create array of positions for the square
-    const positions = [
-       1.0,  1.0,
-      -1.0,  1.0,
-       1.0, -1.0,
-      -1.0, -1.0,
-    ];
-
     // pass list of positions into webGL to build the shape,
     // by filling positionBuffer via Float32Array
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array(positions),
-      gl.STATIC_DRAW
-    );
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-    return { position: positionBuffer };
+    const colors = [
+      1, 1, 1, 1, // white
+      1, 0, 0, 1, // red
+      0, 1, 0, 1, // green
+      0, 0, 1, 1, // blue
+    ];
+
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+
+    return {
+      position: positionBuffer,
+      color: colorBuffer,
+    };
 
   }
 
@@ -128,8 +145,6 @@ function main() {
       zNear,
       zFar
     );
-
-    console.log(projectionMatrix);
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
@@ -169,6 +184,31 @@ function main() {
       );
     }
 
+    // Tell WebGL how to pull out the colors from the color buffer
+    // into the vertexColor attribute.
+    {
+      const numComponents = 4;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexColor,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset
+      );
+
+      gl.enableVertexAttribArray(
+        programInfo.attribLocations.vertexColor
+      );
+    }
+
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
 
@@ -198,6 +238,7 @@ function main() {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
