@@ -11,6 +11,8 @@ function main() {
     return;
   }
 
+  var squareRotation = 0.0;
+
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
@@ -114,7 +116,7 @@ function main() {
   }
 
 
-  function drawScene(gl, programInfo, buffers) {
+  function drawScene(gl, programInfo, buffers, deltaTime) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to 100% opaque black
     gl.clearDepth(1.0);                 // Clear everything
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -156,6 +158,13 @@ function main() {
       modelViewMatrix,  // destination matrix
       modelViewMatrix,  // matrix to translate
       [-0.0, 0.0, -6.0] // amount to translate
+    );
+
+    mat4.rotate(
+      modelViewMatrix, // destination matrix
+      modelViewMatrix, // matrix to rotate
+      squareRotation,  // amount to rotate in radians
+      [0, 0, 1]        // axis to rotate around (z axis)
     );
 
     // Tell WebGL how to pull out the positions from the position
@@ -230,6 +239,9 @@ function main() {
       const vertexCount = 4;
       gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
     }
+
+    // update rotation for next draw
+    squareRotation += deltaTime;
   }
 
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
@@ -248,7 +260,20 @@ function main() {
 
   const buffers = initBuffers(gl);
 
-  drawScene(gl, programInfo, buffers);
+  var then = 0;
+
+  // Draw the scene repeatedly
+  function render(now) {
+    now *= 0.001; // convert to seconds
+    const deltaTime = now - then;
+    then = now;
+
+    drawScene(gl, programInfo, buffers, deltaTime);
+
+    requestAnimationFrame(render);
+  }
+
+  requestAnimationFrame(render);
 
   window.gl = gl;
 }
