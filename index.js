@@ -17,26 +17,34 @@ function main() {
   const vsSource = `
     attribute vec4 aVertexPosition;
     attribute vec2 aTextureCoord;
+    attribute vec4 aVertexColor;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
     varying highp vec2 vTextureCoord;
+    varying lowp vec4 vColor;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
+      vColor = aVertexColor;
     }
   `;
 
   // Fragement shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
+    varying lowp vec4 vColor;
 
     uniform sampler2D uSampler;
 
     void main() {
-      gl_FragColor = texture2D(uSampler, vTextureCoord);
+      if (vColor.w == 0.0) {
+        gl_FragColor = texture2D(uSampler, vTextureCoord);
+      } else {
+        gl_FragColor = vColor;
+      }
     }
   `;
 
@@ -128,6 +136,15 @@ function main() {
     // by filling positionBuffer via Float32Array
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
+    const faceColors = [
+      [1.0,  1.0,  1.0,  1.0],    // Front face: white
+      [1.0,  0.0,  0.0,  1.0],    // Back face: red
+      [0.0,  1.0,  0.0,  1.0],    // Top face: green
+      [0.0,  0.0,  1.0,  0.0],    // Bottom face: blue
+      [1.0,  1.0,  0.0,  0.0],    // Right face: yellow
+      [1.0,  0.0,  1.0,  0.0],    // Left face: purple
+    ];
+
     const textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
 
@@ -174,6 +191,21 @@ function main() {
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
+    const colors = [];
+
+    for (var j = 0; j < faceColors.length; j++) {
+      const c = faceColors[j];
+
+      // Repeat each color four times for the four vertices of the face
+      for (var k = 0; k < 4; k++) {
+        colors.push(...c);
+      }
+    }
+
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
     // This array defines each face as two triangles, use the indices into the
     // vertex array to specify each triangle's position.
     const indices = [
@@ -191,6 +223,7 @@ function main() {
     return {
       position: positionBuffer,
       textureCoord: textureCoordBuffer,
+      color: colorBuffer,
       indices: indexBuffer,
     };
   }
@@ -362,6 +395,31 @@ function main() {
       );
     }
 
+    // Tell WebGL how to pull out the color coordinates from
+    // the color coordinate buffer into the vertexColor attribute.
+    {
+      const numComponents = 4;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexColor,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset
+      );
+
+      gl.enableVertexAttribArray(
+        programInfo.attribLocations.vertexColor
+      );
+    }
+
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
@@ -408,6 +466,7 @@ function main() {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
