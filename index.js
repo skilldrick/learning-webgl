@@ -18,17 +18,20 @@ function main() {
     attribute vec4 aVertexPosition;
     attribute vec2 aTextureCoord;
     attribute vec4 aVertexColor;
+    attribute float aVertexLogic;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
     varying highp vec2 vTextureCoord;
     varying lowp vec4 vColor;
+    varying lowp float vLogic;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
       vColor = aVertexColor;
+      vLogic = aVertexLogic;
     }
   `;
 
@@ -36,11 +39,12 @@ function main() {
   const fsSource = `
     varying highp vec2 vTextureCoord;
     varying lowp vec4 vColor;
+    varying lowp float vLogic;
 
     uniform sampler2D uSampler;
 
     void main() {
-      if (vColor.w == 0.0) {
+      if (vLogic == 0.0) {
         gl_FragColor = texture2D(uSampler, vTextureCoord);
       } else {
         gl_FragColor = vColor;
@@ -136,15 +140,6 @@ function main() {
     // by filling positionBuffer via Float32Array
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-    const faceColors = [
-      [1.0,  1.0,  1.0,  1.0],    // Front face: white
-      [1.0,  0.0,  0.0,  1.0],    // Back face: red
-      [0.0,  1.0,  0.0,  1.0],    // Top face: green
-      [0.0,  0.0,  1.0,  0.0],    // Bottom face: blue
-      [1.0,  1.0,  0.0,  0.0],    // Right face: yellow
-      [1.0,  0.0,  1.0,  0.0],    // Left face: purple
-    ];
-
     const textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
 
@@ -191,6 +186,15 @@ function main() {
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
+    const faceColors = [
+      [1.0,  1.0,  1.0,  1.0],    // Front face: white
+      [1.0,  0.0,  0.0,  1.0],    // Back face: red
+      [0.0,  1.0,  0.0,  1.0],    // Top face: green
+      [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
+      [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
+      [1.0,  0.0,  1.0,  1.0],    // Left face: purple
+    ];
+
     const colors = [];
 
     for (var j = 0; j < faceColors.length; j++) {
@@ -205,6 +209,28 @@ function main() {
     const colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+
+    const faceLogic = [
+      0, // front
+      0, // back
+      1, // top
+      1, // bottom
+      1, // left
+      1, // right
+    ];
+
+    const logic = [];
+    for (var i = 0; i < faceLogic.length; i++) {
+      // Repeat each logic bit four times for the four vertices of the face
+      for (var j = 0; j < 4; j++) {
+        logic.push(faceLogic[i]);
+      }
+    }
+
+    const logicBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, logicBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(logic), gl.STATIC_DRAW);
 
     // This array defines each face as two triangles, use the indices into the
     // vertex array to specify each triangle's position.
@@ -224,6 +250,7 @@ function main() {
       position: positionBuffer,
       textureCoord: textureCoordBuffer,
       color: colorBuffer,
+      logic: logicBuffer,
       indices: indexBuffer,
     };
   }
@@ -286,6 +313,26 @@ function main() {
     return (value & (value - 1)) == 0;
   }
 
+  // Tell WebGL how to pull out values from `buffer` into the attribute at `attribLocation`
+  function setupVertexAttrib(gl, numComponents, type, buffer, attribLocation) {
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+    gl.vertexAttribPointer(
+      attribLocation,
+      numComponents,
+      type,
+      normalize,
+      stride,
+      offset
+    );
+
+    gl.enableVertexAttribArray(attribLocation);
+  }
+
   function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to 100% opaque black
     gl.clearDepth(1.0);                 // Clear everything
@@ -344,81 +391,10 @@ function main() {
       [0, 1, 1]           // axis to rotate around (z axis)
     );
 
-    // Tell WebGL how to pull out the positions from the position
-    // buffer into the vertexPosition attribute.
-    {
-      const numComponents = 3;  // pull out 3 values per iteration
-      const type = gl.FLOAT;    // the data in the buffer is 32bit floats
-      const normalize = false;  // don't normalize
-      const stride = 0;         // how many bytes to get from one set of values to the next
-                                // 0 = use type and numComponents above
-      const offset = 0;         // how many bytes inside the buffer to start from
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-
-      gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexPosition,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset
-      );
-
-      gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexPosition
-      );
-    }
-
-    // Tell WebGL how to pull out the texture coordinates from
-    // the texture coordinate buffer into the textureCoord attribute.
-    {
-      const numComponents = 2;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
-
-      gl.vertexAttribPointer(
-        programInfo.attribLocations.textureCoord,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset
-      );
-
-      gl.enableVertexAttribArray(
-        programInfo.attribLocations.textureCoord
-      );
-    }
-
-    // Tell WebGL how to pull out the color coordinates from
-    // the color coordinate buffer into the vertexColor attribute.
-    {
-      const numComponents = 4;
-      const type = gl.FLOAT;
-      const normalize = false;
-      const stride = 0;
-      const offset = 0;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-
-      gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexColor,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset
-      );
-
-      gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexColor
-      );
-    }
+    setupVertexAttrib(gl, 3, gl.FLOAT, buffers.position, programInfo.attribLocations.vertexPosition);
+    setupVertexAttrib(gl, 2, gl.FLOAT, buffers.textureCoord, programInfo.attribLocations.textureCoord);
+    setupVertexAttrib(gl, 4, gl.FLOAT, buffers.color, programInfo.attribLocations.vertexColor);
+    setupVertexAttrib(gl, 1, gl.FLOAT, buffers.logic, programInfo.attribLocations.vertexLogic);
 
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
@@ -466,6 +442,7 @@ function main() {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+      vertexLogic: gl.getAttribLocation(shaderProgram, 'aVertexLogic'),
       vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
