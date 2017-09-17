@@ -12,43 +12,32 @@ function main() {
   }
 
   var cubeRotation = 0.0;
+  var z = -6.0;
 
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
     attribute vec2 aTextureCoord;
-    attribute vec4 aVertexColor;
-    attribute float aVertexLogic;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
     varying highp vec2 vTextureCoord;
-    varying lowp vec4 vColor;
-    varying lowp float vLogic;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
-      vColor = aVertexColor;
-      vLogic = aVertexLogic;
     }
   `;
 
   // Fragement shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
-    varying lowp vec4 vColor;
-    varying lowp float vLogic;
 
     uniform sampler2D uSampler;
 
     void main() {
-      if (vLogic == 0.0) {
-        gl_FragColor = texture2D(uSampler, vTextureCoord);
-      } else {
-        gl_FragColor = vColor;
-      }
+      gl_FragColor = texture2D(uSampler, vTextureCoord);
     }
   `;
 
@@ -186,52 +175,6 @@ function main() {
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-    const faceColors = [
-      [1.0,  1.0,  1.0,  1.0],    // Front face: white
-      [1.0,  0.0,  0.0,  1.0],    // Back face: red
-      [0.0,  1.0,  0.0,  1.0],    // Top face: green
-      [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-      [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-      [1.0,  0.0,  1.0,  1.0],    // Left face: purple
-    ];
-
-    const colors = [];
-
-    for (var j = 0; j < faceColors.length; j++) {
-      const c = faceColors[j];
-
-      // Repeat each color four times for the four vertices of the face
-      for (var k = 0; k < 4; k++) {
-        colors.push(...c);
-      }
-    }
-
-    const colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-
-    const faceLogic = [
-      0, // front
-      0, // back
-      1, // top
-      1, // bottom
-      1, // left
-      1, // right
-    ];
-
-    const logic = [];
-    for (var i = 0; i < faceLogic.length; i++) {
-      // Repeat each logic bit four times for the four vertices of the face
-      for (var j = 0; j < 4; j++) {
-        logic.push(faceLogic[i]);
-      }
-    }
-
-    const logicBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, logicBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(logic), gl.STATIC_DRAW);
-
     // This array defines each face as two triangles, use the indices into the
     // vertex array to specify each triangle's position.
     const indices = [
@@ -249,8 +192,6 @@ function main() {
     return {
       position: positionBuffer,
       textureCoord: textureCoordBuffer,
-      color: colorBuffer,
-      logic: logicBuffer,
       indices: indexBuffer,
     };
   }
@@ -291,6 +232,12 @@ function main() {
       if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
         // Yes, it's a power of 2. Generate mips.
         gl.generateMipmap(gl.TEXTURE_2D);
+
+        // Use anisotropic filter (http://blog.tojicode.com/2012/03/anisotropic-filtering-in-webgl.html)
+        const ext = gl.getExtension("EXT_texture_filter_anisotropic");
+        if (ext) {
+          gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+        }
       } else {
         // No, it's not a power of 2. Turn off mips and set
         // wrapping to clamp to edge
@@ -301,6 +248,7 @@ function main() {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         // gl.NEAREST is also allowed, instead of gl.LINEAR, as neither mipmap.
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       }
     };
 
@@ -374,27 +322,27 @@ function main() {
     mat4.translate(
       modelViewMatrix,  // destination matrix
       modelViewMatrix,  // matrix to translate
-      [-0.0, 0.0, -6.0] // amount to translate
+      [-0.0, 0.0, z] // amount to translate
     );
 
+    /*
     mat4.rotate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to rotate
       cubeRotation,    // amount to rotate in radians
       [0, 0, 1]        // axis to rotate around (z axis)
     );
+    */
 
     mat4.rotate(
       modelViewMatrix,    // destination matrix
       modelViewMatrix,    // matrix to rotate
-      cubeRotation * 0.7, // amount to rotate in radians
-      [0, 1, 1]           // axis to rotate around (z axis)
+      cubeRotation * 0.5, // amount to rotate in radians
+      [0, 1, 0]           // axis to rotate around (y axis)
     );
 
     setupVertexAttrib(gl, 3, gl.FLOAT, buffers.position, programInfo.attribLocations.vertexPosition);
     setupVertexAttrib(gl, 2, gl.FLOAT, buffers.textureCoord, programInfo.attribLocations.textureCoord);
-    setupVertexAttrib(gl, 4, gl.FLOAT, buffers.color, programInfo.attribLocations.vertexColor);
-    setupVertexAttrib(gl, 1, gl.FLOAT, buffers.logic, programInfo.attribLocations.vertexLogic);
 
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
@@ -442,8 +390,6 @@ function main() {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
-      vertexLogic: gl.getAttribLocation(shaderProgram, 'aVertexLogic'),
-      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -456,6 +402,25 @@ function main() {
 
   const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/cubetexture.png');
 
+
+  const currentlyPressedKeys = {};
+
+  document.addEventListener('keydown', function (e) {
+    currentlyPressedKeys[e.key] = true;
+  });
+
+  document.addEventListener('keyup', function (e) {
+    currentlyPressedKeys[e.key] = false;
+  });
+
+  function handleInput() {
+    if (currentlyPressedKeys['w']) {
+      z += 0.05;
+    } else if (currentlyPressedKeys['s']) {
+      z -= 0.05;
+    }
+  }
+
   var then = 0;
 
   // Draw the scene repeatedly
@@ -463,6 +428,8 @@ function main() {
     now *= 0.001; // convert to seconds
     const deltaTime = now - then;
     then = now;
+
+    handleInput();
 
     drawScene(gl, programInfo, buffers, texture, deltaTime);
 
