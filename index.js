@@ -11,9 +11,6 @@ function main() {
     return;
   }
 
-  var cubeRotation = 0.0;
-  var z = -6.0;
-
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
@@ -322,23 +319,21 @@ function main() {
     mat4.translate(
       modelViewMatrix,  // destination matrix
       modelViewMatrix,  // matrix to translate
-      [-0.0, 0.0, z] // amount to translate
+      [-0.0, 0.0, z]    // amount to translate
     );
 
-    /*
     mat4.rotate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to rotate
-      cubeRotation,    // amount to rotate in radians
-      [0, 0, 1]        // axis to rotate around (z axis)
+      yRotation,       // amount to rotate in radians
+      [0, 1, 0]        // axis to rotate around (y axis)
     );
-    */
 
     mat4.rotate(
-      modelViewMatrix,    // destination matrix
-      modelViewMatrix,    // matrix to rotate
-      cubeRotation * 0.5, // amount to rotate in radians
-      [0, 1, 0]           // axis to rotate around (y axis)
+      modelViewMatrix, // destination matrix
+      modelViewMatrix, // matrix to rotate
+      xRotation,       // amount to rotate in radians
+      [1, 0, 0]        // axis to rotate around (x axis)
     );
 
     setupVertexAttrib(gl, 3, gl.FLOAT, buffers.position, programInfo.attribLocations.vertexPosition);
@@ -378,9 +373,6 @@ function main() {
       const offset = 0;
       gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
     }
-
-    // update rotation for next draw
-    cubeRotation += deltaTime;
   }
 
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
@@ -413,12 +405,37 @@ function main() {
     currentlyPressedKeys[e.key] = false;
   });
 
+  var xRotation = 0.0;
+  var yRotation = 0.0;
+  var z = -6.0;
+
+  var xSpeed = 0.0;
+  var ySpeed = 0.0;
+
   function handleInput() {
     if (currentlyPressedKeys['w']) {
+      xSpeed -= 0.05;
+    }
+    if (currentlyPressedKeys['s']) {
+      xSpeed += 0.05;
+    }
+    if (currentlyPressedKeys['a']) {
+      ySpeed -= 0.05;
+    }
+    if (currentlyPressedKeys['d']) {
+      ySpeed += 0.05;
+    }
+    if (currentlyPressedKeys['[']) {
       z += 0.05;
-    } else if (currentlyPressedKeys['s']) {
+    }
+    if (currentlyPressedKeys[']']) {
       z -= 0.05;
     }
+  }
+
+  function updateState(deltaTime) {
+    xRotation += xSpeed * deltaTime;
+    yRotation += ySpeed * deltaTime;
   }
 
   var then = 0;
@@ -430,6 +447,8 @@ function main() {
     then = now;
 
     handleInput();
+
+    updateState(deltaTime)
 
     drawScene(gl, programInfo, buffers, texture, deltaTime);
 
