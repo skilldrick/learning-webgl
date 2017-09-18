@@ -78,42 +78,47 @@ function main() {
   }
 
   function initBuffers(gl) {
+    /*
+           f-----g
+          /|    /|
+      1 d-----c  |
+        |  |  |  |
+     y  |  e--|--h   -1
+        | /   | /      z
+     -1 a-----b    1
+           x
+       -1      1
+    */
+
+    const a = [-1, -1,  1];
+    const b = [ 1, -1,  1];
+    const c = [ 1,  1,  1];
+    const d = [-1,  1,  1];
+    const e = [-1, -1, -1];
+    const f = [-1,  1, -1];
+    const g = [ 1,  1, -1];
+    const h = [ 1, -1, -1];
+
+    // Faces are defined in counter-clockwise order, which means
+    // the "front" of the face.
     const positions = [
       // Front face
-      -1.0, -1.0,  1.0,
-       1.0, -1.0,  1.0,
-       1.0,  1.0,  1.0,
-      -1.0,  1.0,  1.0,
+      a, b, c, d,
 
       // Back face
-      -1.0, -1.0, -1.0,
-      -1.0,  1.0, -1.0,
-       1.0,  1.0, -1.0,
-       1.0, -1.0, -1.0,
+      e, f, g, h,
 
       // Top face
-      -1.0,  1.0, -1.0,
-      -1.0,  1.0,  1.0,
-       1.0,  1.0,  1.0,
-       1.0,  1.0, -1.0,
+      f, d, c, g,
 
       // Bottom face
-      -1.0, -1.0, -1.0,
-       1.0, -1.0, -1.0,
-       1.0, -1.0,  1.0,
-      -1.0, -1.0,  1.0,
+      e, h, b, a,
 
       // Right face
-       1.0, -1.0, -1.0,
-       1.0,  1.0, -1.0,
-       1.0,  1.0,  1.0,
-       1.0, -1.0,  1.0,
+      h, g, c, b,
 
       // Left face
-      -1.0, -1.0, -1.0,
-      -1.0, -1.0,  1.0,
-      -1.0,  1.0,  1.0,
-      -1.0,  1.0, -1.0,
+      e, a, d, f,
     ];
 
     // create a buffer for the square's positions
@@ -124,10 +129,7 @@ function main() {
 
     // pass list of positions into webGL to build the shape,
     // by filling positionBuffer via Float32Array
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-    const textureCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...positions)), gl.STATIC_DRAW);
 
     const textureCoordinates = [
       // Front
@@ -167,13 +169,14 @@ function main() {
       0.0,  1.0,
     ];
 
+    const textureCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
 
-    const indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-    // This array defines each face as two triangles, use the indices into the
+    // This array defines each face as two triangles, using the indices into the
     // vertex array to specify each triangle's position.
+    // E.g. 0, 1, 2 is the triangle abc and 0, 2, 3 is acd
     const indices = [
       0,  1,  2,   0,  2,  3,  // front
       4,  5,  6,   4,  6,  7,  // back
@@ -182,6 +185,9 @@ function main() {
       16, 17, 18,  16, 18, 19, // right
       20, 21, 22,  20, 22, 23, // left
     ];
+
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
     // Send element array to WebGL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
@@ -363,6 +369,10 @@ function main() {
 
     // Bind the texture to texture unit 0
     gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // Only draw front face
+    //gl.cullFace(gl.BACK);
+    //gl.enable(gl.CULL_FACE);
 
     // Tell the shader we bound the texture to texture unit 0
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
