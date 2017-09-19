@@ -487,6 +487,27 @@ function main() {
     currentlyPressedKeys[e.key] = false;
   });
 
+  var previousTouch = null;
+
+  canvas.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    previousTouch = null;
+  });
+
+  canvas.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const currentTouch = { x: touch.clientX, y: touch.clientY };
+
+    if (previousTouch) {
+      xSpeed += (currentTouch.y - previousTouch.y) / 100;
+      ySpeed += (currentTouch.x - previousTouch.x) / 100;
+    }
+
+    previousTouch = currentTouch;
+  });
+
   var xRotation = 0.0;
   var yRotation = 0.0;
   var z = -6.0;
