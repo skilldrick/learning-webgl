@@ -14,27 +14,42 @@ function main() {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
 
+    uniform mat4 uNormalMatrix;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
     varying highp vec2 vTextureCoord;
+    varying highp vec3 vLighting;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
+
+      // apply lighting effect
+      highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
+      highp vec3 directionalLightColor = vec3(1, 1, 1);
+      highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
+
+      highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
+
+      highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
+      vLighting = ambientLight + (directionalLightColor * directional);
     }
   `;
 
   // Fragement shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
+    varying highp vec3 vLighting;
 
     uniform sampler2D uSampler;
 
     void main() {
-      gl_FragColor = texture2D(uSampler, vTextureCoord);
+      highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
+      gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
     }
   `;
 
@@ -386,8 +401,13 @@ function main() {
       [1, 0, 0]        // axis to rotate around (x axis)
     );
 
+    const normalMatrix = mat4.create();
+    mat4.invert(normalMatrix, modelViewMatrix);
+    mat4.transpose(normalMatrix, normalMatrix);
+
     setupVertexAttrib(gl, 3, gl.FLOAT, buffers.position, programInfo.attribLocations.vertexPosition);
     setupVertexAttrib(gl, 2, gl.FLOAT, buffers.textureCoord, programInfo.attribLocations.textureCoord);
+    setupVertexAttrib(gl, 3, gl.FLOAT, buffers.normal, programInfo.attribLocations.vertexNormal);
 
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
@@ -406,6 +426,12 @@ function main() {
       programInfo.uniformLocations.modelViewMatrix,
       false,
       modelViewMatrix
+    );
+
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.normalMatrix,
+      false,
+      normalMatrix
     );
 
     // Tell WebGL we want to affect texture unit 0
@@ -435,10 +461,12 @@ function main() {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+      vertexNormal: gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
       textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+      normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
       modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
       uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
     },
@@ -446,7 +474,7 @@ function main() {
 
   const buffers = initBuffers(gl);
 
-  const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/cubetexture.png');
+  const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/crate2.jpg');
 
 
   const currentlyPressedKeys = {};
@@ -463,8 +491,8 @@ function main() {
   var yRotation = 0.0;
   var z = -6.0;
 
-  var xSpeed = 0.0;
-  var ySpeed = 0.0;
+  var xSpeed = 0.5;
+  var ySpeed = 1.0;
 
   function handleInput() {
     if (currentlyPressedKeys['w']) {
@@ -479,10 +507,10 @@ function main() {
     if (currentlyPressedKeys['d']) {
       ySpeed += 0.05;
     }
-    if (currentlyPressedKeys['[']) {
+    if (currentlyPressedKeys['='] || currentlyPressedKeys['+']) {
       z += 0.05;
     }
-    if (currentlyPressedKeys[']']) {
+    if (currentlyPressedKeys['_'] || currentlyPressedKeys['-']) {
       z -= 0.05;
     }
   }
