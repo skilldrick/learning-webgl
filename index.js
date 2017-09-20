@@ -54,8 +54,28 @@ function main() {
   `;
 
   function initShaderProgram(gl, vsSource, fsSource) {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+    function loadShader(type, source) {
+      // create a new shader object of type `type`
+      const shader = gl.createShader(type);
+
+      // set the source to the provided source
+      gl.shaderSource(shader, source);
+
+      // compile the shader program
+      gl.compileShader(shader);
+
+      // check to see if it compiled correctly
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
+    }
+
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
 
     // create shader program
     const shaderProgram = gl.createProgram();
@@ -72,40 +92,20 @@ function main() {
     return shaderProgram;
   }
 
-  function loadShader(gl, type, source) {
-    // create a new shader object of type `type`
-    const shader = gl.createShader(type);
+  function initBuffers(gl) {
+    function createBufferFrom2DArray(array) {
+      // create a new buffer
+      const buffer = gl.createBuffer();
 
-    // set the source to the provided source
-    gl.shaderSource(shader, source);
+      // tell webgl this is the "current" array_buffer
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 
-    // compile the shader program
-    gl.compileShader(shader);
+      // load current buffer with contents of array, flattened and converted to Float32Array
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...array)), gl.STATIC_DRAW);
 
-    // check to see if it compiled correctly
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
-      gl.deleteShader(shader);
-      return null;
+      return buffer;
     }
 
-    return shader;
-  }
-
-  function createBufferFrom2DArray(array) {
-    // create a new buffer
-    const buffer = gl.createBuffer();
-
-    // tell webgl this is the "current" array_buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-    // load current buffer with contents of array, flattened and converted to Float32Array
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...array)), gl.STATIC_DRAW);
-
-    return buffer;
-  }
-
-  function initBuffers(gl) {
     /*
            f-----g
           /|    /|
@@ -499,5 +499,5 @@ function main() {
 
   requestAnimationFrame(render);
 
-  window.gl = gl;
+  //window.gl = gl;
 }
