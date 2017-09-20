@@ -5,6 +5,8 @@ function main() {
   // Initialize the GL context
   const gl = canvas.getContext("webgl");
 
+  //window.gl = gl;
+
   // Only continue if WebGL is available and working
   if (!gl) {
     alert("Unable to initialize WebGL. Your browser or machine may not support it.");
@@ -200,6 +202,10 @@ function main() {
   }
 
   function loadTexture(gl, url) {
+    function isPowerOf2(value) {
+      return (value & (value - 1)) == 0;
+    }
+
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -210,15 +216,12 @@ function main() {
     // we'll update the texture with the contents of the image.
     const level = 0;
     const internalFormat = gl.RGBA;
-    const width = 1;
-    const height = 1;
-    const border = 0;
     const srcFormat = gl.RGBA;
     const srcType = gl.UNSIGNED_BYTE;
     const pixel = new Uint8Array([0, 0, 255, 255]); // opaque blue
+
     gl.texImage2D(
-      gl.TEXTURE_2D, level, internalFormat, width, height, border,
-      srcFormat, srcType, pixel
+      gl.TEXTURE_2D, level, internalFormat, 1, 1, 0, srcFormat, srcType, pixel
     );
 
     const image = new Image();
@@ -258,10 +261,6 @@ function main() {
     image.src = url;
 
     return texture;
-  }
-
-  function isPowerOf2(value) {
-    return (value & (value - 1)) == 0;
   }
 
   // Tell WebGL how to pull out values from `buffer` into the attribute at `attribLocation`
@@ -305,6 +304,7 @@ function main() {
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100;
+
     const projectionMatrix = mat4.create();
 
     // note: glmatrix.js always has the first argument
@@ -324,9 +324,9 @@ function main() {
     // Now move the drawing position a bit to where we want to
     // start drawing the square.
     mat4.translate(
-      modelViewMatrix,  // destination matrix
-      modelViewMatrix,  // matrix to translate
-      [-0.0, 0.0, z]    // amount to translate
+      modelViewMatrix, // destination matrix
+      modelViewMatrix, // matrix to translate
+      [0, 0, z]        // translate z axis
     );
 
     mat4.rotate(
@@ -347,16 +347,6 @@ function main() {
     mat4.invert(normalMatrix, modelViewMatrix);
     mat4.transpose(normalMatrix, normalMatrix);
 
-    setupVertexAttrib(gl, buffers.position, programInfo.attribLocations.vertexPosition);
-    setupVertexAttrib(gl, buffers.textureCoord, programInfo.attribLocations.textureCoord);
-    setupVertexAttrib(gl, buffers.normal, programInfo.attribLocations.vertexNormal);
-
-    // Tell WebGL which indices to use to index the vertices
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-
-    // Tell WebGL to use our program when drawing
-    gl.useProgram(programInfo.program);
-
     // Set shader uniforms
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.projectionMatrix,
@@ -376,6 +366,16 @@ function main() {
       normalMatrix
     );
 
+    setupVertexAttrib(gl, buffers.position, programInfo.attribLocations.vertexPosition);
+    setupVertexAttrib(gl, buffers.textureCoord, programInfo.attribLocations.textureCoord);
+    setupVertexAttrib(gl, buffers.normal, programInfo.attribLocations.vertexNormal);
+
+    // Tell WebGL which indices to use to index the vertices
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
+    // Tell WebGL to use our program when drawing
+    gl.useProgram(programInfo.program);
+
     // Tell WebGL we want to affect texture unit 0
     gl.activeTexture(gl.TEXTURE0);
 
@@ -389,12 +389,7 @@ function main() {
     // Tell the shader we bound the texture to texture unit 0
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
-    {
-      const vertexCount = 36;
-      const type = gl.UNSIGNED_SHORT;
-      const offset = 0;
-      gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-    }
+    gl.drawElements(gl.TRIANGLES, /*vertexCount*/ 36, /*type*/ gl.UNSIGNED_SHORT, /*offset*/ 0);
   }
 
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
@@ -418,44 +413,46 @@ function main() {
 
   const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/crate2.jpg');
 
-
-  const currentlyPressedKeys = {};
-
-  document.addEventListener('keydown', function (e) {
-    currentlyPressedKeys[e.key] = true;
-  });
-
-  document.addEventListener('keyup', function (e) {
-    currentlyPressedKeys[e.key] = false;
-  });
-
-  var previousTouch = null;
-
-  canvas.addEventListener('touchstart', function (e) {
-    e.preventDefault();
-    previousTouch = null;
-  });
-
-  canvas.addEventListener('touchmove', function (e) {
-    e.preventDefault();
-
-    const touch = e.touches[0];
-    const currentTouch = { x: touch.clientX, y: touch.clientY };
-
-    if (previousTouch) {
-      xSpeed += (currentTouch.y - previousTouch.y) / 100;
-      ySpeed += (currentTouch.x - previousTouch.x) / 100;
-    }
-
-    previousTouch = currentTouch;
-  });
-
   var xRotation = 0.0;
   var yRotation = 0.0;
   var z = -6.0;
 
   var xSpeed = 0.5;
   var ySpeed = 1.0;
+
+  const currentlyPressedKeys = {};
+
+  // add event listeners
+  (function () {
+    document.addEventListener('keydown', function (e) {
+      currentlyPressedKeys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', function (e) {
+      currentlyPressedKeys[e.key] = false;
+    });
+
+    var previousTouch = null;
+
+    canvas.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      previousTouch = null;
+    });
+
+    canvas.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const currentTouch = { x: touch.clientX, y: touch.clientY };
+
+      if (previousTouch) {
+        xSpeed += (currentTouch.y - previousTouch.y) / 100;
+        ySpeed += (currentTouch.x - previousTouch.x) / 100;
+      }
+
+      previousTouch = currentTouch;
+    });
+  })()
 
   function handleInput() {
     if (currentlyPressedKeys['w']) {
@@ -501,6 +498,4 @@ function main() {
   }
 
   requestAnimationFrame(render);
-
-  //window.gl = gl;
 }
