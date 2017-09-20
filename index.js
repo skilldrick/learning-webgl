@@ -92,6 +92,19 @@ function main() {
     return shader;
   }
 
+  function createBufferFrom2DArray(array) {
+    // create a new buffer
+    const buffer = gl.createBuffer();
+
+    // tell webgl this is the "current" array_buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+    // load current buffer with contents of array, flattened and converted to Float32Array
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...array)), gl.STATIC_DRAW);
+
+    return buffer;
+  }
+
   function initBuffers(gl) {
     /*
            f-----g
@@ -116,35 +129,14 @@ function main() {
 
     // Faces are defined in counter-clockwise order, which means
     // the "front" of the face.
-    const positions = [
-      // Front face
-      a, b, c, d,
-
-      // Back face
-      e, f, g, h,
-
-      // Top face
-      f, d, c, g,
-
-      // Bottom face
-      e, h, b, a,
-
-      // Right face
-      h, g, c, b,
-
-      // Left face
-      e, a, d, f,
-    ];
-
-    // create a buffer for the square's positions
-    const positionBuffer = gl.createBuffer();
-
-    // select the positionBuffer as the one to apply buffer operations to
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-    // pass list of positions into webGL to build the shape,
-    // by filling positionBuffer via Float32Array
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...positions)), gl.STATIC_DRAW);
+    const positionBuffer = createBufferFrom2DArray([
+      a, b, c, d, // Front face
+      e, f, g, h, // Back face
+      f, d, c, g, // Top face
+      e, h, b, a, // Bottom face
+      h, g, c, b, // Right face
+      e, a, d, f, // Left face
+    ]);
 
     const bl = [0, 0];
     const tl = [1, 0];
@@ -152,63 +144,31 @@ function main() {
     const br = [0, 1];
 
     // defined this way to match positions array
-    const textureCoordinates = [
-      // Front
-      bl, tl, tr, br,
-
-      // Back
-      bl, tl, tr, br,
-
-      // Top
-      bl, tl, tr, br,
-
-      // Bottom
-      bl, tl, tr, br,
-
-      // Right
-      bl, tl, tr, br,
-
-      // Left
-      bl, tl, tr, br,
-    ];
-
-    const textureCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...textureCoordinates)), gl.STATIC_DRAW);
-
-    const normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    const textureCoordBuffer = createBufferFrom2DArray([
+      bl, tl, tr, br, // Front
+      bl, tl, tr, br, // Back
+      bl, tl, tr, br, // Top
+      bl, tl, tr, br, // Bottom
+      bl, tl, tr, br, // Right
+      bl, tl, tr, br, // Left
+    ]);
 
     const outward = [0, 0, 1];
-    const inward = [0, 0, -1];
-    const up = [0, 1, 0];
-    const down = [0, -1, 0];
-    const right = [1, 0, 0];
-    const left = [-1, 0, 0];
+    const inward  = [0, 0, -1];
+    const up      = [0, 1, 0];
+    const down    = [0, -1, 0];
+    const right   = [1, 0, 0];
+    const left    = [-1, 0, 0];
 
     // defined this way to match positions array
-    const vertexNormals = [
-      // Front
-      outward, outward, outward, outward,
-
-      // Back
-      inward, inward, inward, inward,
-
-      // Top
-      up, up, up, up,
-
-      // Bottom
-      down, down, down, down,
-
-      // Right
-      right, right, right, right,
-
-      // Left
-      left, left, left, left,
-    ];
-
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...vertexNormals)), gl.STATIC_DRAW);
+    const normalBuffer = createBufferFrom2DArray([
+      outward, outward, outward, outward, // Front
+      inward, inward, inward, inward,     // Back
+      up, up, up, up,                     // Top
+      down, down, down, down,             // Bottom
+      right, right, right, right,         // Right
+      left, left, left, left,             // Left
+    ]);
 
     // This array defines each face as two triangles, using the indices into the
     // vertex array to specify each triangle's position.
