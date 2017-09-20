@@ -146,95 +146,74 @@ function main() {
     // by filling positionBuffer via Float32Array
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...positions)), gl.STATIC_DRAW);
 
+    const bl = [0, 0];
+    const tl = [1, 0];
+    const tr = [1, 1];
+    const br = [0, 1];
+
+    // defined this way to match positions array
     const textureCoordinates = [
       // Front
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
 
       // Back
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
 
       // Top
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
 
       // Bottom
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
 
       // Right
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
 
       // Left
-      0.0,  0.0,
-      1.0,  0.0,
-      1.0,  1.0,
-      0.0,  1.0,
+      bl, tl, tr, br,
     ];
 
     const textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
 
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...textureCoordinates)), gl.STATIC_DRAW);
 
     const normalBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
 
+    const outward = [0, 0, 1];
+    const inward = [0, 0, -1];
+    const up = [0, 1, 0];
+    const down = [0, -1, 0];
+    const right = [1, 0, 0];
+    const left = [-1, 0, 0];
+
+    // defined this way to match positions array
     const vertexNormals = [
       // Front
-       0.0,  0.0,  1.0,
-       0.0,  0.0,  1.0,
-       0.0,  0.0,  1.0,
-       0.0,  0.0,  1.0,
+      outward, outward, outward, outward,
 
       // Back
-       0.0,  0.0, -1.0,
-       0.0,  0.0, -1.0,
-       0.0,  0.0, -1.0,
-       0.0,  0.0, -1.0,
+      inward, inward, inward, inward,
 
       // Top
-       0.0,  1.0,  0.0,
-       0.0,  1.0,  0.0,
-       0.0,  1.0,  0.0,
-       0.0,  1.0,  0.0,
+      up, up, up, up,
 
       // Bottom
-       0.0, -1.0,  0.0,
-       0.0, -1.0,  0.0,
-       0.0, -1.0,  0.0,
-       0.0, -1.0,  0.0,
+      down, down, down, down,
 
       // Right
-       1.0,  0.0,  0.0,
-       1.0,  0.0,  0.0,
-       1.0,  0.0,  0.0,
-       1.0,  0.0,  0.0,
+      right, right, right, right,
 
       // Left
-      -1.0,  0.0,  0.0,
-      -1.0,  0.0,  0.0,
-      -1.0,  0.0,  0.0,
-      -1.0,  0.0,  0.0
+      left, left, left, left,
     ];
 
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...vertexNormals)), gl.STATIC_DRAW);
 
     // This array defines each face as two triangles, using the indices into the
     // vertex array to specify each triangle's position.
     // E.g. 0, 1, 2 is the triangle abc and 0, 2, 3 is acd
+    // This enables us to reuse vertices to draw more than one triangle.
     const indices = [
       0,  1,  2,   0,  2,  3,  // front
       4,  5,  6,   4,  6,  7,  // back
