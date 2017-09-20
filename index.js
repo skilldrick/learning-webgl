@@ -103,6 +103,10 @@ function main() {
       // load current buffer with contents of array, flattened and converted to Float32Array
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...array)), gl.STATIC_DRAW);
 
+      // by (my) convention the inner arrays each correspond to a vertex, so the length
+      // is the number of components per vertex (this is used by setupVertexArray)
+      buffer.numComponents = array[0].length;
+
       return buffer;
     }
 
@@ -185,8 +189,6 @@ function main() {
 
     const indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-    // Send element array to WebGL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
     return {
@@ -263,16 +265,17 @@ function main() {
   }
 
   // Tell WebGL how to pull out values from `buffer` into the attribute at `attribLocation`
-  function setupVertexAttrib(gl, numComponents, type, buffer, attribLocation) {
+  function setupVertexAttrib(gl, buffer, attribLocation) {
     const normalize = false;
     const stride = 0;
     const offset = 0;
+    const type = gl.FLOAT;
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 
     gl.vertexAttribPointer(
       attribLocation,
-      numComponents,
+      buffer.numComponents,
       type,
       normalize,
       stride,
@@ -344,9 +347,9 @@ function main() {
     mat4.invert(normalMatrix, modelViewMatrix);
     mat4.transpose(normalMatrix, normalMatrix);
 
-    setupVertexAttrib(gl, 3, gl.FLOAT, buffers.position, programInfo.attribLocations.vertexPosition);
-    setupVertexAttrib(gl, 2, gl.FLOAT, buffers.textureCoord, programInfo.attribLocations.textureCoord);
-    setupVertexAttrib(gl, 3, gl.FLOAT, buffers.normal, programInfo.attribLocations.vertexNormal);
+    setupVertexAttrib(gl, buffers.position, programInfo.attribLocations.vertexPosition);
+    setupVertexAttrib(gl, buffers.textureCoord, programInfo.attribLocations.textureCoord);
+    setupVertexAttrib(gl, buffers.normal, programInfo.attribLocations.vertexNormal);
 
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
