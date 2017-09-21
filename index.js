@@ -47,11 +47,13 @@ function main() {
     varying highp vec2 vTextureCoord;
     varying highp vec3 vLighting;
 
+    uniform highp float uAlpha;
+
     uniform sampler2D uSampler;
 
     void main() {
       highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
-      gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
+      gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a * uAlpha);
     }
   `;
 
@@ -287,8 +289,11 @@ function main() {
   function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to 100% opaque black
     gl.clearDepth(1.0);                 // Clear everything
-    gl.enable(gl.DEPTH_TEST);           // Enable depth testing
-    gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Use src alpha for source, identity for dest
+    gl.enable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);          // Disable depth testing
+
+    //gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
 
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -347,6 +352,9 @@ function main() {
     mat4.invert(normalMatrix, modelViewMatrix);
     mat4.transpose(normalMatrix, normalMatrix);
 
+    // Tell WebGL to use our program when drawing
+    gl.useProgram(programInfo.program);
+
     // Set shader uniforms
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.projectionMatrix,
@@ -373,9 +381,6 @@ function main() {
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
-    // Tell WebGL to use our program when drawing
-    gl.useProgram(programInfo.program);
-
     // Tell WebGL we want to affect texture unit 0
     gl.activeTexture(gl.TEXTURE0);
 
@@ -388,6 +393,8 @@ function main() {
 
     // Tell the shader we bound the texture to texture unit 0
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+    gl.uniform1f(programInfo.uniformLocations.alphaUniform, 0.5);
 
     gl.drawElements(gl.TRIANGLES, /*vertexCount*/ 36, /*type*/ gl.UNSIGNED_SHORT, /*offset*/ 0);
   }
@@ -405,6 +412,7 @@ function main() {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
       modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+      alphaUniform: gl.getUniformLocation(shaderProgram, 'uAlpha'),
       uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
     },
   };
