@@ -16,44 +16,30 @@ function main() {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
-    attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
 
-    uniform mat4 uNormalMatrix;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
     varying highp vec2 vTextureCoord;
-    varying highp vec3 vLighting;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
-
-      // apply lighting effect
-      highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
-      highp vec3 directionalLightColor = vec3(1, 1, 1);
-      highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
-
-      highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
-
-      highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
-      vLighting = ambientLight + (directionalLightColor * directional);
     }
   `;
 
   // Fragement shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
-    varying highp vec3 vLighting;
-
-    uniform highp float uAlpha;
 
     uniform sampler2D uSampler;
 
+    uniform highp vec3 uColor;
+
     void main() {
       highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
-      gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a * uAlpha);
+      gl_FragColor = texelColor * vec4(uColor, 1);
     }
   `;
 
@@ -114,92 +100,23 @@ function main() {
       return buffer;
     }
 
-    /*
-           f-----g
-          /|    /|
-      1 d-----c  |
-        |  |  |  |
-     y  |  e--|--h   -1
-        | /   | /      z
-     -1 a-----b    1
-           x
-       -1      1
-    */
-
-    const a = [-1, -1,  1];
-    const b = [ 1, -1,  1];
-    const c = [ 1,  1,  1];
-    const d = [-1,  1,  1];
-    const e = [-1, -1, -1];
-    const f = [-1,  1, -1];
-    const g = [ 1,  1, -1];
-    const h = [ 1, -1, -1];
-
-    // Faces are defined in counter-clockwise order, which means
-    // the "front" of the face.
-    const positionBuffer = createBufferFrom2DArray([
-      a, b, c, d, // Front face
-      e, f, g, h, // Back face
-      f, d, c, g, // Top face
-      e, h, b, a, // Bottom face
-      h, g, c, b, // Right face
-      e, a, d, f, // Left face
+    const starVertexPositionBuffer = createBufferFrom2DArray([
+      [-1, -1, 0],
+      [1, -1, 0],
+      [-1, 1, 0],
+      [1, 1, 0],
     ]);
 
-    const bl = [0, 0];
-    const tl = [1, 0];
-    const tr = [1, 1];
-    const br = [0, 1];
-
-    // defined this way to match positions array
-    const textureCoordBuffer = createBufferFrom2DArray([
-      bl, tl, tr, br, // Front
-      bl, tl, tr, br, // Back
-      bl, tl, tr, br, // Top
-      bl, tl, tr, br, // Bottom
-      bl, tl, tr, br, // Right
-      bl, tl, tr, br, // Left
+    const textureCoord = createBufferFrom2DArray([
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
     ]);
-
-    const outward = [0, 0, 1];
-    const inward  = [0, 0, -1];
-    const up      = [0, 1, 0];
-    const down    = [0, -1, 0];
-    const right   = [1, 0, 0];
-    const left    = [-1, 0, 0];
-
-    // defined this way to match positions array
-    const normalBuffer = createBufferFrom2DArray([
-      outward, outward, outward, outward, // Front
-      inward, inward, inward, inward,     // Back
-      up, up, up, up,                     // Top
-      down, down, down, down,             // Bottom
-      right, right, right, right,         // Right
-      left, left, left, left,             // Left
-    ]);
-
-    // This array defines each face as two triangles, using the indices into the
-    // vertex array to specify each triangle's position.
-    // E.g. 0, 1, 2 is the triangle abc and 0, 2, 3 is acd
-    // This enables us to reuse vertices to draw more than one triangle.
-    const indices = [
-      0,  1,  2,   0,  2,  3,  // front
-      4,  5,  6,   4,  6,  7,  // back
-      8,  9,  10,  8,  10, 11, // top
-      12, 13, 14,  12, 14, 15, // bottom
-      16, 17, 18,  16, 18, 19, // right
-      20, 21, 22,  20, 22, 23, // left
-    ];
-
-    const indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
     return {
-      position: positionBuffer,
-      normal: normalBuffer,
-      textureCoord: textureCoordBuffer,
-      indices: indexBuffer,
+      starVertexPositionBuffer: starVertexPositionBuffer,
+      textureCoord: textureCoord,
     };
   }
 
@@ -304,13 +221,10 @@ function main() {
     // ratio that matches the display size of the canvas
     // and we only want to see objects between 0.1 units
     // and 100 units away from the camera.
-
     const fieldOfView = 45 * Math.PI / 180; // in radians
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 0.1;
     const zFar = 100;
-
-    const projectionMatrix = mat4.create();
 
     // note: glmatrix.js always has the first argument
     // as the destination to receive the result.
@@ -322,40 +236,175 @@ function main() {
       zFar
     );
 
-    // Set the drawing position to the "identity" point, which is
-    // the center of the scene.
-    const modelViewMatrix = mat4.create();
+    // set modelViewMatrix back to identity
+    mat4.identity(modelViewMatrix);
 
-    // Now move the drawing position a bit to where we want to
-    // start drawing the square.
+    // Now move the drawing position back by `z`
     mat4.translate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to translate
       [0, 0, z]        // translate z axis
     );
 
+    // Rotate around x axis
     mat4.rotate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to rotate
-      yRotation,       // amount to rotate in radians
-      [0, 1, 0]        // axis to rotate around (y axis)
-    );
-
-    mat4.rotate(
-      modelViewMatrix, // destination matrix
-      modelViewMatrix, // matrix to rotate
-      xRotation,       // amount to rotate in radians
+      degToRad(tilt),  // amount to rotate in radians
       [1, 0, 0]        // axis to rotate around (x axis)
     );
 
-    const normalMatrix = mat4.create();
-    mat4.invert(normalMatrix, modelViewMatrix);
-    mat4.transpose(normalMatrix, normalMatrix);
+    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
-    // Tell WebGL to use our program when drawing
-    gl.useProgram(programInfo.program);
+    stars.forEach(star => {
+      star.draw(tilt, spin);
+      spin += 0.001;
+    });
+  }
 
-    // Set shader uniforms
+  function drawStar() {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    setupVertexAttrib(gl, buffers.starVertexPositionBuffer, programInfo.attribLocations.vertexPosition);
+    setupVertexAttrib(gl, buffers.textureCoord, programInfo.attribLocations.textureCoord);
+
+    setMatrixUniforms();
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  function Star(startingDistance, rotationSpeed) {
+    this.angle = 0;
+    this.dist = startingDistance;
+    this.rotationSpeed = rotationSpeed;
+
+    // Set the colors to a starting value.
+    this.randomiseColors();
+  }
+
+  Star.prototype.draw = function (tilt, spin) {
+    pushModelViewMatrix();
+
+    // Move to the star's position
+    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(this.angle), [0.0, 1.0, 0.0]);
+    mat4.translate(modelViewMatrix, modelViewMatrix, [this.dist, 0.0, 0.0]);
+
+    // Rotate back so that the star is facing the viewer
+    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(-this.angle), [0.0, 1.0, 0.0]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(-tilt), [1.0, 0.0, 0.0]);
+
+    // All stars spin around the Z axis at the same rate
+    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(spin), [0.0, 0.0, 1.0]);
+
+    // Draw the star in its main color
+    gl.uniform3f(programInfo.uniformLocations.colorUniform, this.r, this.g, this.b);
+    drawStar()
+
+    popModelViewMatrix();
+  };
+
+  const effectiveFPMS = 60 / 1000;
+
+  Star.prototype.animate = function (elapsedTimeMs) {
+    this.angle += this.rotationSpeed * effectiveFPMS * elapsedTimeMs;
+
+    // Decrease the distance, resetting the star to the outside of
+    // the spiral if it's at the center.
+    this.dist -= 0.01 * effectiveFPMS * elapsedTimeMs;
+    if (this.dist < 0.0) {
+      this.dist += 5.0;
+      this.randomiseColors();
+    }
+  };
+
+  Star.prototype.randomiseColors = function () {
+    // Give the star a random color for normal
+    // circumstances...
+    this.r = Math.random();
+    this.g = Math.random();
+    this.b = Math.random();
+    /*
+    // When the star is twinkling, we draw it twice, once
+    // in the color below (not spinning) and then once in the
+    // main color defined above.
+    this.twinkleR = Math.random();
+    this.twinkleG = Math.random();
+    this.twinkleB = Math.random();
+    */
+  };
+
+  function degToRad(degrees) {
+    return degrees * Math.PI / 180;
+  }
+
+  function initWorldObjects() {
+    const stars = [];
+    const numStars = 50;
+
+    for (var i = 0; i < numStars; i++) {
+      stars.push(new Star((i / numStars) * 5.0, i / numStars));
+    }
+
+    return stars;
+  }
+
+  const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+
+  const programInfo = {
+    program: shaderProgram,
+    attribLocations: {
+      vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+      textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+    },
+    uniformLocations: {
+      projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+      modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+      colorUniform: gl.getUniformLocation(shaderProgram, 'uColor'),
+      uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+    },
+  };
+
+  const buffers = initBuffers(gl);
+
+  const stars = initWorldObjects();
+
+  const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/star.gif');
+
+  const modelViewMatrixStack = [];
+
+  // Tell WebGL to use our program when drawing
+  gl.useProgram(programInfo.program);
+
+  // Tell WebGL which indices to use to index the vertices
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
+  // Tell WebGL we want to affect texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+
+  // Bind the texture to texture unit 0
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // Set the drawing position to the "identity" point, which is
+  // the center of the scene.
+  var modelViewMatrix = mat4.create();
+  const projectionMatrix = mat4.create();
+
+  function pushModelViewMatrix() {
+      var copy = mat4.create();
+      mat4.copy(copy, modelViewMatrix);
+
+      modelViewMatrixStack.push(copy);
+  }
+
+  function popModelViewMatrix() {
+    if (modelViewMatrixStack.length === 0) {
+        throw "Invalid popModelViewMatrix!";
+    }
+
+    modelViewMatrix = modelViewMatrixStack.pop();
+  }
+
+  function setMatrixUniforms() {
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.projectionMatrix,
       false,
@@ -367,66 +416,12 @@ function main() {
       false,
       modelViewMatrix
     );
-
-    gl.uniformMatrix4fv(
-      programInfo.uniformLocations.normalMatrix,
-      false,
-      normalMatrix
-    );
-
-    setupVertexAttrib(gl, buffers.position, programInfo.attribLocations.vertexPosition);
-    setupVertexAttrib(gl, buffers.textureCoord, programInfo.attribLocations.textureCoord);
-    setupVertexAttrib(gl, buffers.normal, programInfo.attribLocations.vertexNormal);
-
-    // Tell WebGL which indices to use to index the vertices
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-
-    // Tell WebGL we want to affect texture unit 0
-    gl.activeTexture(gl.TEXTURE0);
-
-    // Bind the texture to texture unit 0
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    // Only draw front face
-    //gl.cullFace(gl.BACK);
-    //gl.enable(gl.CULL_FACE);
-
-    // Tell the shader we bound the texture to texture unit 0
-    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-    gl.uniform1f(programInfo.uniformLocations.alphaUniform, 0.5);
-
-    gl.drawElements(gl.TRIANGLES, /*vertexCount*/ 36, /*type*/ gl.UNSIGNED_SHORT, /*offset*/ 0);
   }
 
-  const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+  var z = -15.0;
 
-  const programInfo = {
-    program: shaderProgram,
-    attribLocations: {
-      vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-      vertexNormal: gl.getAttribLocation(shaderProgram, 'aVertexNormal'),
-      textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
-    },
-    uniformLocations: {
-      projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-      normalMatrix: gl.getUniformLocation(shaderProgram, 'uNormalMatrix'),
-      modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-      alphaUniform: gl.getUniformLocation(shaderProgram, 'uAlpha'),
-      uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
-    },
-  };
-
-  const buffers = initBuffers(gl);
-
-  const texture = loadTexture(gl, 'https://s3-us-west-2.amazonaws.com/skilldrick-webgl/crate2.jpg');
-
-  var xRotation = 0.0;
-  var yRotation = 0.0;
-  var z = -6.0;
-
-  var xSpeed = 0.5;
-  var ySpeed = 1.0;
+  var tilt = 90;
+  var spin = 0;
 
   const currentlyPressedKeys = {};
 
@@ -439,53 +434,28 @@ function main() {
     document.addEventListener('keyup', function (e) {
       currentlyPressedKeys[e.key] = false;
     });
-
-    var previousTouch = null;
-
-    canvas.addEventListener('touchstart', function (e) {
-      e.preventDefault();
-      previousTouch = null;
-    });
-
-    canvas.addEventListener('touchmove', function (e) {
-      e.preventDefault();
-
-      const touch = e.touches[0];
-      const currentTouch = { x: touch.clientX, y: touch.clientY };
-
-      if (previousTouch) {
-        xSpeed += (currentTouch.y - previousTouch.y) / 100;
-        ySpeed += (currentTouch.x - previousTouch.x) / 100;
-      }
-
-      previousTouch = currentTouch;
-    });
   })()
 
   function handleInput() {
-    if (currentlyPressedKeys['w']) {
-      xSpeed -= 0.05;
-    }
-    if (currentlyPressedKeys['s']) {
-      xSpeed += 0.05;
-    }
-    if (currentlyPressedKeys['a']) {
-      ySpeed -= 0.05;
-    }
-    if (currentlyPressedKeys['d']) {
-      ySpeed += 0.05;
-    }
     if (currentlyPressedKeys['='] || currentlyPressedKeys['+']) {
-      z += 0.05;
+      z += 0.1;
     }
     if (currentlyPressedKeys['_'] || currentlyPressedKeys['-']) {
-      z -= 0.05;
+      z -= 0.1;
+    }
+
+    if (currentlyPressedKeys['[']) {
+      tilt += 2;
+    }
+    if (currentlyPressedKeys[']']) {
+      tilt -= 2;
     }
   }
 
-  function updateState(deltaTime) {
-    xRotation += xSpeed * deltaTime;
-    yRotation += ySpeed * deltaTime;
+  function updateState(deltaTimeMs) {
+    stars.forEach(star => {
+      star.animate(deltaTimeMs);
+    });
   }
 
   var then = 0;
@@ -498,7 +468,7 @@ function main() {
 
     handleInput();
 
-    updateState(deltaTime)
+    updateState(deltaTime * 1000);
 
     drawScene(gl, programInfo, buffers, texture, deltaTime);
 
