@@ -258,7 +258,7 @@ function main() {
 
     stars.forEach(star => {
       star.draw(tilt, spin);
-      spin += 0.001;
+      spin += 0.1;
     });
   }
 
@@ -273,10 +273,11 @@ function main() {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  function Star(startingDistance, rotationSpeed) {
+  function Star(startingDistance, rotationSpeed, index) {
     this.angle = 0;
     this.dist = startingDistance;
     this.rotationSpeed = rotationSpeed;
+    this.index = index;
 
     // Set the colors to a starting value.
     this.randomiseColors();
@@ -303,7 +304,7 @@ function main() {
     popModelViewMatrix();
   };
 
-  const effectiveFPMS = 60 / 1000;
+  const effectiveFPMS = 240 / 1000;
 
   Star.prototype.animate = function (elapsedTimeMs) {
     this.angle += this.rotationSpeed * effectiveFPMS * elapsedTimeMs;
@@ -342,7 +343,7 @@ function main() {
     const numStars = 50;
 
     for (var i = 0; i < numStars; i++) {
-      stars.push(new Star((i / numStars) * 5.0, i / numStars));
+      stars.push(new Star((i / numStars) * 5.0, i / numStars, i));
     }
 
     return stars;
@@ -468,9 +469,9 @@ function main() {
 
     handleInput();
 
-    updateState(deltaTime * 1000);
-
     drawScene(gl, programInfo, buffers, texture, deltaTime);
+
+    updateState(deltaTime * 1000);
 
     requestAnimationFrame(render);
   }
