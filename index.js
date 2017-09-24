@@ -16,29 +16,40 @@ function main() {
   // Vertex shader program
   const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
     uniform mat3 uNormalMatrix;
 
+    uniform vec3 uLightingDirection;
+
     varying highp vec2 vTextureCoord;
+    varying highp vec3 vLightWeighting;
 
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
       vTextureCoord = aTextureCoord;
+
+      highp vec3 ambientColor = vec3(0.2, 0.2, 0.3);
+      highp vec3 directionalColor = vec3(0.8, 0.8, 0.7);
+      highp vec3 transformedNormal = uNormalMatrix * aVertexNormal;
+      float directionalLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);
+      vLightWeighting = ambientColor + directionalColor * directionalLightWeighting;
     }
   `;
 
   // Fragment shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
+    varying highp vec3 vLightWeighting;
 
     uniform sampler2D uSampler;
 
     void main() {
       highp vec4 texel = texture2D(uSampler, vTextureCoord);
-      gl_FragColor = texel;
+      gl_FragColor = vec4(texel.rgb * vLightWeighting, 1);
     }
   `;
 
@@ -97,7 +108,6 @@ function main() {
       buffer.numComponents = array[0].length;
 
       buffer.numItems = array.length;
-      console.log(buffer.numItems);
 
       return buffer;
     }
@@ -116,8 +126,6 @@ function main() {
       buffer.numComponents = 1;
 
       buffer.numItems = indexData.length;
-
-      console.log(buffer.numItems);
 
       return buffer;
     }
@@ -303,6 +311,17 @@ function main() {
       [0, 0, -6]       // translate z by 6
     );
 
+    const normalMatrix = mat3.create()
+    mat3.fromMat4(normalMatrix, modelViewMatrix);
+    mat3.invert(normalMatrix, normalMatrix);
+    mat3.transpose(normalMatrix, normalMatrix);
+
+    gl.uniformMatrix3fv(
+      programInfo.uniformLocations.uNormalMatrix,
+      false,
+      normalMatrix
+    );
+
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.uProjectionMatrix,
       false,
@@ -314,6 +333,11 @@ function main() {
       false,
       modelViewMatrix
     );
+    const lightingDirection = [-1, -1, -1];
+    const adjustedLightingDirection = vec3.create();
+    vec3.normalize(adjustedLightingDirection, lightingDirection);
+    vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
+    gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
 
@@ -485,11 +509,9 @@ function main() {
       gl,
       vsSource,
       fsSource,
-      ['aVertexPosition', 'aTextureCoord'],
-      ['uProjectionMatrix', 'uModelViewMatrix', 'uSampler']
+      ['aVertexPosition', 'aTextureCoord', 'aVertexNormal'],
+      ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uLightingDirection', 'uSampler']
     );
-
-    console.log(programInfo.attribLocations);
 
     const buffers = initBuffers(gl);
 
@@ -514,9 +536,11 @@ function main() {
     gl.clearDepth(1.0);                 // Clear everything
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 
+
     //TODO: set up lighting and mouse movement
 
     setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
+    setupVertexAttrib(gl, buffers.moonVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
     setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
 
 
