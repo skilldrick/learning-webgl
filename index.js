@@ -451,12 +451,14 @@ function main() {
 
   var yaw = 0;
   var yawRate = 0;
+  var touchYaw = 0;
 
   var xPos = 0;
   var yPos = 0.4;
   var zPos = 0;
 
   var speed = 0;
+  var touchSpeed = 0;
   var strafe = 0;
 
   const currentlyPressedKeys = {};
@@ -470,6 +472,41 @@ function main() {
     document.addEventListener('keyup', function (e) {
       currentlyPressedKeys[e.key] = false;
     });
+
+    var previousTouch = null;
+
+    canvas.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      previousTouch = null;
+    });
+
+    canvas.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const currentTouch = { x: touch.clientX, y: touch.clientY };
+
+      if (previousTouch) {
+        touchSpeed = (currentTouch.y - previousTouch.y) / 100;
+        touchYaw = (currentTouch.x - previousTouch.x) / 100;
+
+        // Only set one of these at a time
+        if (Math.abs(touchSpeed) > Math.abs(touchYaw)) {
+          touchYaw = 0;
+        } else {
+          touchSpeed = 0;
+        }
+      }
+
+      previousTouch = currentTouch;
+    });
+
+    document.addEventListener('touchend', function (e) {
+      e.preventDefault();
+      touchSpeed = 0;
+      touchYaw = 0;
+    });
+
   })()
 
   function handleInput() {
@@ -477,6 +514,8 @@ function main() {
       yawRate = 0.1;
     } else if (currentlyPressedKeys['ArrowRight']) {
       yawRate = -0.1;
+    } else if (touchYaw) {
+      yawRate = (touchYaw > 0) ? 0.1 : -0.1;
     } else {
       yawRate = 0;
     }
@@ -501,20 +540,10 @@ function main() {
       speed = 0.003;
     } else if (currentlyPressedKeys['s']) {
       speed = -0.003;
+    } else if (touchSpeed) {
+      speed = (touchSpeed > 0) ? 0.003 : -0.003;
     } else {
       speed = 0;
-    }
-
-
-
-    if (currentlyPressedKeys['='] || currentlyPressedKeys['+']) {
-    }
-    if (currentlyPressedKeys['_'] || currentlyPressedKeys['-']) {
-    }
-
-    if (currentlyPressedKeys['[']) {
-    }
-    if (currentlyPressedKeys[']']) {
     }
   }
 
