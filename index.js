@@ -1,166 +1,3 @@
-const levelData = `
-NUMPOLLIES 36
-
-// Floor 1
--3.0  0.0 -3.0 0.0 6.0
--3.0  0.0  3.0 0.0 0.0
- 3.0  0.0  3.0 6.0 0.0
-
--3.0  0.0 -3.0 0.0 6.0
- 3.0  0.0 -3.0 6.0 6.0
- 3.0  0.0  3.0 6.0 0.0
-
-// Ceiling 1
--3.0  1.0 -3.0 0.0 6.0
--3.0  1.0  3.0 0.0 0.0
- 3.0  1.0  3.0 6.0 0.0
--3.0  1.0 -3.0 0.0 6.0
- 3.0  1.0 -3.0 6.0 6.0
- 3.0  1.0  3.0 6.0 0.0
-
-// A1
-
--2.0  1.0  -2.0 0.0 1.0
--2.0  0.0  -2.0 0.0 0.0
--0.5  0.0  -2.0 1.5 0.0
--2.0  1.0  -2.0 0.0 1.0
--0.5  1.0  -2.0 1.5 1.0
--0.5  0.0  -2.0 1.5 0.0
-
-// A2
-
- 2.0  1.0  -2.0 2.0 1.0
- 2.0  0.0  -2.0 2.0 0.0
- 0.5  0.0  -2.0 0.5 0.0
- 2.0  1.0  -2.0 2.0 1.0
- 0.5  1.0  -2.0 0.5 1.0
- 0.5  0.0  -2.0 0.5 0.0
-
-// B1
-
--2.0  1.0  2.0 2.0  1.0
--2.0  0.0   2.0 2.0 0.0
--0.5  0.0   2.0 0.5 0.0
--2.0  1.0  2.0 2.0  1.0
--0.5  1.0  2.0 0.5  1.0
--0.5  0.0   2.0 0.5 0.0
-
-// B2
-
- 2.0  1.0  2.0 2.0  1.0
- 2.0  0.0   2.0 2.0 0.0
- 0.5  0.0   2.0 0.5 0.0
- 2.0  1.0  2.0 2.0  1.0
- 0.5  1.0  2.0 0.5  1.0
- 0.5  0.0   2.0 0.5 0.0
-
-// C1
-
--2.0  1.0  -2.0 0.0  1.0
--2.0  0.0   -2.0 0.0 0.0
--2.0  0.0   -0.5 1.5 0.0
--2.0  1.0  -2.0 0.0  1.0
--2.0  1.0  -0.5 1.5  1.0
--2.0  0.0   -0.5 1.5 0.0
-
-// C2
-
--2.0  1.0   2.0 2.0 1.0
--2.0  0.0   2.0 2.0 0.0
--2.0  0.0   0.5 0.5 0.0
--2.0  1.0  2.0 2.0 1.0
--2.0  1.0  0.5 0.5 1.0
--2.0  0.0   0.5 0.5 0.0
-
-// D1
-
-2.0  1.0  -2.0 0.0 1.0
-2.0  0.0   -2.0 0.0 0.0
-2.0  0.0   -0.5 1.5 0.0
-2.0  1.0  -2.0 0.0 1.0
-2.0  1.0  -0.5 1.5 1.0
-2.0  0.0   -0.5 1.5 0.0
-
-// D2
-
-2.0  1.0  2.0 2.0 1.0
-2.0  0.0   2.0 2.0 0.0
-2.0  0.0   0.5 0.5 0.0
-2.0  1.0  2.0 2.0 1.0
-2.0  1.0  0.5 0.5 1.0
-2.0  0.0   0.5 0.5 0.0
-
-// Upper hallway - L
--0.5  1.0  -3.0 0.0 1.0
--0.5  0.0   -3.0 0.0 0.0
--0.5  0.0   -2.0 1.0 0.0
--0.5  1.0  -3.0 0.0 1.0
--0.5  1.0  -2.0 1.0 1.0
--0.5  0.0   -2.0 1.0 0.0
-
-// Upper hallway - R
-0.5  1.0  -3.0 0.0 1.0
-0.5  0.0   -3.0 0.0 0.0
-0.5  0.0   -2.0 1.0 0.0
-0.5  1.0  -3.0 0.0 1.0
-0.5  1.0  -2.0 1.0 1.0
-0.5  0.0   -2.0 1.0 0.0
-
-// Lower hallway - L
--0.5  1.0  3.0 0.0 1.0
--0.5  0.0   3.0 0.0 0.0
--0.5  0.0   2.0 1.0 0.0
--0.5  1.0  3.0 0.0 1.0
--0.5  1.0  2.0 1.0 1.0
--0.5  0.0   2.0 1.0 0.0
-
-// Lower hallway - R
-0.5  1.0  3.0 0.0 1.0
-0.5  0.0   3.0 0.0 0.0
-0.5  0.0   2.0 1.0 0.0
-0.5  1.0  3.0 0.0 1.0
-0.5  1.0  2.0 1.0 1.0
-0.5  0.0   2.0 1.0 0.0
-
-
-// Left hallway - Lw
-
--3.0  1.0  0.5 1.0 1.0
--3.0  0.0   0.5 1.0 0.0
--2.0  0.0   0.5 0.0 0.0
--3.0  1.0  0.5 1.0 1.0
--2.0  1.0  0.5 0.0 1.0
--2.0  0.0   0.5 0.0 0.0
-
-// Left hallway - Hi
-
--3.0  1.0  -0.5 1.0 1.0
--3.0  0.0   -0.5 1.0 0.0
--2.0  0.0   -0.5 0.0 0.0
--3.0  1.0  -0.5 1.0 1.0
--2.0  1.0  -0.5 0.0 1.0
--2.0  0.0   -0.5 0.0 0.0
-
-// Right hallway - Lw
-
-3.0  1.0  0.5 1.0 1.0
-3.0  0.0   0.5 1.0 0.0
-2.0  0.0   0.5 0.0 0.0
-3.0  1.0  0.5 1.0 1.0
-2.0  1.0  0.5 0.0 1.0
-2.0  0.0   0.5 0.0 0.0
-
-// Right hallway - Hi
-
-3.0  1.0  -0.5 1.0 1.0
-3.0  0.0   -0.5 1.0 0.0
-2.0  0.0   -0.5 0.0 0.0
-3.0  1.0  -0.5 1.0 1.0
-2.0  1.0 -0.5 0.0 1.0
-2.0  0.0   -0.5 0.0 0.0
-`;
-
-
 main();
 
 function main() {
@@ -183,6 +20,7 @@ function main() {
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
+    uniform mat3 uNormalMatrix;
 
     varying highp vec2 vTextureCoord;
 
@@ -242,8 +80,9 @@ function main() {
     return shaderProgram;
   }
 
-  function initBuffers(gl, worldCoords) {
+  function initBuffers(gl) {
     function createBufferFrom2DArray(array) {
+      console.log(array);
       // create a new buffer
       const buffer = gl.createBuffer();
 
@@ -254,7 +93,7 @@ function main() {
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([].concat(...array)), gl.STATIC_DRAW);
 
       // by (my) convention the inner arrays each correspond to a vertex, so the length
-      // is the number of components per vertex (this is used by setupVertexArray)
+      // is the number of components per vertex (this is used by setupVertexAttrib)
       buffer.numComponents = array[0].length;
 
       buffer.numItems = array.length;
@@ -262,13 +101,68 @@ function main() {
       return buffer;
     }
 
-    const worldVertexCoordBuffer = createBufferFrom2DArray(worldCoords.vertexPositions);
+    function createIndexBufferFromArray(array) {
+      console.log(array);
+      // create a new buffer
+      const buffer = gl.createBuffer();
 
-    const worldVertexTextureCoordBuffer = createBufferFrom2DArray(worldCoords.vertexTextureCoords);
+      // tell webgl this is the "current" element_array_buffer
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+
+      // load current buffer with contents of array, converted to Uint16Array
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+      // the index buffer only contains one component per vertex
+      buffer.numComponents = 1;
+
+      buffer.numItems = indexData.length;
+
+      return buffer;
+    }
+
+    const latitudeBands = 30;
+    const longitudeBands = 30;
+    const radius = 2;
+
+    const vertexPositionData = [];
+    const normalData = [];
+    const textureCoordData = [];
+    const indexData = [];
+
+    for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
+      let theta = latNumber * Math.PI / latitudeBands;
+      let sinTheta = Math.sin(theta);
+      let cosTheta = Math.cos(theta);
+
+      for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
+        let phi = longNumber * 2 * Math.PI / longitudeBands;
+        let sinPhi = Math.sin(phi);
+        let cosPhi = Math.cos(phi);
+
+        let x = cosPhi * sinTheta;
+        let y = cosTheta;
+        let z = sinPhi * sinTheta;
+
+        let u = 1 - (longNumber / longitudeBands);
+        let v = 1 - (latNumber / latitudeBands);
+
+        normalData.push([x, y, z]);
+        textureCoordData.push([u, v]);
+        vertexPositionData.push([radius * x, radius * y, radius * z]);
+
+        let first = (latNumber * (longitudeBands + 1)) + longNumber;
+        let second = first + longitudeBands + 1;
+
+        indexData.push(first, second, first + 1);
+        indexData.push(second, second + 1, first + 1);
+      }
+    }
 
     return {
-      worldVertexCoordBuffer,
-      worldVertexTextureCoordBuffer
+      moonVertexPositionBuffer: createBufferFrom2DArray(vertexPositionData),
+      moonVertexNormalBuffer: createBufferFrom2DArray(normalData),
+      moonVertexTextureCoordBuffer: createBufferFrom2DArray(textureCoordData),
+      moonVertexIndexBuffer: createIndexBufferFromArray(indexData),
     };
   }
 
@@ -421,31 +315,6 @@ function main() {
     return degrees * Math.PI / 180;
   }
 
-  function loadWorld() {
-    var vertexPositions = [];
-    var vertexTextureCoords = [];
-
-    levelData.split("\n").forEach(line => {
-      const vals = line.replace(/^\s+/, "").split(/\s+/);
-      if (vals.length === 5 && vals[0] !== "//") {
-        // this line represents a vertex
-        const floatVals = vals.map(v => parseFloat(v));
-
-        // first 3 values are vertex coords
-        vertexPositions.push(floatVals.slice(0, 3));
-
-        // last 2 values are texture coords
-        vertexTextureCoords.push(floatVals.slice(3, 5));
-      }
-    });
-
-    return {
-      vertexPositions,
-      vertexTextureCoords,
-    };
-  }
-
-
   var pitch = 0;
   var pitchRate = 0;
 
@@ -583,13 +452,11 @@ function main() {
       },
     };
 
-    const worldCoords = loadWorld();
-    const buffers = initBuffers(gl, worldCoords);
-
+    const buffers = initBuffers(gl);
 
     const texture = loadTexture(
       gl,
-      "https://s3-us-west-2.amazonaws.com/skilldrick-webgl/walltexture.jpg"
+      "https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
     );
 
     // Tell WebGL to use our program when drawing
@@ -607,10 +474,11 @@ function main() {
     gl.clearDepth(1.0);                 // Clear everything
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 
-    //gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+    //TODO: set up lighting and mouse movement
 
     setupVertexAttrib(gl, buffers.worldVertexTextureCoordBuffer, programInfo.attribLocations.textureCoord);
     setupVertexAttrib(gl, buffers.worldVertexCoordBuffer, programInfo.attribLocations.vertexPosition);
+
 
 
     var then = 0;
