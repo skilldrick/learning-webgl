@@ -38,7 +38,7 @@ function main() {
 
     void main() {
       highp vec4 texel = texture2D(uSampler, vTextureCoord);
-      gl_FragColor = vec4(1, 1, 1, 1);
+      gl_FragColor = texel;
     }
   `;
 
@@ -97,6 +97,7 @@ function main() {
       buffer.numComponents = array[0].length;
 
       buffer.numItems = array.length;
+      console.log(buffer.numItems);
 
       return buffer;
     }
@@ -115,6 +116,8 @@ function main() {
       buffer.numComponents = 1;
 
       buffer.numItems = indexData.length;
+
+      console.log(buffer.numItems);
 
       return buffer;
     }
@@ -148,7 +151,12 @@ function main() {
         normalData.push([x, y, z]);
         textureCoordData.push([u, v]);
         vertexPositionData.push([radius * x, radius * y, radius * z]);
+      }
+    }
 
+    // the indexes don't use inclusive limits
+    for (let latNumber = 0; latNumber < latitudeBands; latNumber++) {
+      for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
         let first = (latNumber * (longitudeBands + 1)) + longNumber;
         let second = first + longitudeBands + 1;
 
@@ -288,11 +296,11 @@ function main() {
       [0, 1, 0]         // axis to rotate around (y axis)
     );
 
-    // Translate based on current player position
+    // Translate back by 6
     mat4.translate(
-      modelViewMatrix,      // destination matrix
-      modelViewMatrix,      // matrix to translate
-      [-xPos, -yPos, -zPos] // translate to current player position
+      modelViewMatrix, // destination matrix
+      modelViewMatrix, // matrix to translate
+      [0, 0, -6]       // translate z by 6
     );
 
     gl.uniformMatrix4fv(
@@ -307,8 +315,12 @@ function main() {
       modelViewMatrix
     );
 
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
+
+    //5581
     gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
   }
+  var numItems = 1;
 
   function degToRad(degrees) {
     return degrees * Math.PI / 180;
@@ -323,7 +335,7 @@ function main() {
 
   var xPos = 0;
   var yPos = 0.4;
-  var zPos = 0;
+  var zPos =  10;
 
   var speed = 0;
   var touchSpeed = 0;
@@ -477,6 +489,8 @@ function main() {
       ['uProjectionMatrix', 'uModelViewMatrix', 'uSampler']
     );
 
+    console.log(programInfo.attribLocations);
+
     const buffers = initBuffers(gl);
 
     const texture = loadTexture(
@@ -501,13 +515,6 @@ function main() {
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 
     //TODO: set up lighting and mouse movement
-
-    /*
-      moonVertexPositionBuffer: createBufferFrom2DArray(vertexPositionData),
-      moonVertexNormalBuffer: createBufferFrom2DArray(normalData),
-      moonVertexTextureCoordBuffer: createBufferFrom2DArray(textureCoordData),
-      moonVertexIndexBuffer: createIndexBufferFromArray(indexData),
-    */
 
     setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
     setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
