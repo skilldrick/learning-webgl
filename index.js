@@ -30,14 +30,15 @@ function main() {
     }
   `;
 
-  // Fragement shader
+  // Fragment shader
   const fsSource = `
     varying highp vec2 vTextureCoord;
 
     uniform sampler2D uSampler;
 
     void main() {
-      gl_FragColor = texture2D(uSampler, vTextureCoord);
+      highp vec4 texel = texture2D(uSampler, vTextureCoord);
+      gl_FragColor = vec4(1, 1, 1, 1);
     }
   `;
 
@@ -82,7 +83,6 @@ function main() {
 
   function initBuffers(gl) {
     function createBufferFrom2DArray(array) {
-      console.log(array);
       // create a new buffer
       const buffer = gl.createBuffer();
 
@@ -102,7 +102,6 @@ function main() {
     }
 
     function createIndexBufferFromArray(array) {
-      console.log(array);
       // create a new buffer
       const buffer = gl.createBuffer();
 
@@ -297,18 +296,18 @@ function main() {
     );
 
     gl.uniformMatrix4fv(
-      programInfo.uniformLocations.projectionMatrix,
+      programInfo.uniformLocations.uProjectionMatrix,
       false,
       projectionMatrix
     );
 
     gl.uniformMatrix4fv(
-      programInfo.uniformLocations.modelViewMatrix,
+      programInfo.uniformLocations.uModelViewMatrix,
       false,
       modelViewMatrix
     );
 
-    gl.drawArrays(gl.TRIANGLES, 0, 108);
+    gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
   }
 
   function degToRad(degrees) {
@@ -436,27 +435,54 @@ function main() {
     pitch = Math.min(Math.max(pitch, -75), 75);
   }
 
-  function setup() {
+  function createProgramInfo(gl, vsSource, fsSource, attribs, uniforms) {
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 
-    const programInfo = {
+    function objectFromArray(arr, func) {
+      return arr.reduce((obj, name) => {
+        obj[name] = func(name);
+        return obj;
+      }, {});
+    }
+
+    function getAttribLocation(name) {
+      const loc = gl.getAttribLocation(shaderProgram, name);
+      if (loc === -1) {
+        throw new Error("Invalid attrib location: " + name);
+      }
+      return loc;
+    }
+
+    function getUniformLocation(name) {
+      const loc = gl.getUniformLocation(shaderProgram, name);
+      if (loc === null) {
+        throw new Error("Invalid uniform location: " + name);
+      }
+      return loc;
+    }
+
+    return {
       program: shaderProgram,
-      attribLocations: {
-        vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-        textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
-      },
-      uniformLocations: {
-        projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-        modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-        uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
-      },
+      attribLocations: objectFromArray(attribs, getAttribLocation),
+      uniformLocations: objectFromArray(uniforms, getUniformLocation),
     };
+  }
+
+  function setup() {
+    const programInfo = createProgramInfo(
+      gl,
+      vsSource,
+      fsSource,
+      ['aVertexPosition', 'aTextureCoord'],
+      ['uProjectionMatrix', 'uModelViewMatrix', 'uSampler']
+    );
 
     const buffers = initBuffers(gl);
 
     const texture = loadTexture(
       gl,
-      "https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
+      "moon.gif"
+      //"https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
     );
 
     // Tell WebGL to use our program when drawing
@@ -476,8 +502,15 @@ function main() {
 
     //TODO: set up lighting and mouse movement
 
-    setupVertexAttrib(gl, buffers.worldVertexTextureCoordBuffer, programInfo.attribLocations.textureCoord);
-    setupVertexAttrib(gl, buffers.worldVertexCoordBuffer, programInfo.attribLocations.vertexPosition);
+    /*
+      moonVertexPositionBuffer: createBufferFrom2DArray(vertexPositionData),
+      moonVertexNormalBuffer: createBufferFrom2DArray(normalData),
+      moonVertexTextureCoordBuffer: createBufferFrom2DArray(textureCoordData),
+      moonVertexIndexBuffer: createIndexBufferFromArray(indexData),
+    */
+
+    setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
+    setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
 
 
 
