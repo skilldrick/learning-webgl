@@ -130,8 +130,8 @@ function main() {
       return buffer;
     }
 
-    const latitudeBands = 30;
-    const longitudeBands = 30;
+    const latitudeBands = 50;
+    const longitudeBands = 50;
     const radius = 2;
 
     const vertexPositionData = [];
@@ -268,22 +268,6 @@ function main() {
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Create a projection matrix, a special matrix that is
-    // used to simulate the distortion of perspective in a camera.
-    // Our field of view is 45 degrees, with a width/height
-    // ratio that matches the display size of the canvas
-    // and we only want to see objects between 0.1 units
-    // and 100 units away from the camera.
-    const projectionMatrix = mat4.create();
-
-    mat4.perspective(
-      projectionMatrix,
-      45 * Math.PI / 180, // field of view
-      gl.canvas.clientWidth / gl.canvas.clientHeight, // aspect
-      0.1,   // zNear
-      100    // zFar
-    );
-
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
     const modelViewMatrix = mat4.create();
@@ -309,16 +293,11 @@ function main() {
     );
 
     gl.uniformMatrix4fv(
-      programInfo.uniformLocations.uProjectionMatrix,
-      false,
-      projectionMatrix
-    );
-
-    gl.uniformMatrix4fv(
       programInfo.uniformLocations.uModelViewMatrix,
       false,
       modelViewMatrix
     );
+
     const lightingDirection = [-1, -1, -1];
     const adjustedLightingDirection = vec3.create();
     vec3.normalize(adjustedLightingDirection, lightingDirection);
@@ -326,16 +305,12 @@ function main() {
     gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
-
-    //5581
     gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
   }
-  var numItems = 1;
 
   function degToRad(degrees) {
     return degrees * Math.PI / 180;
   }
-
 
   const moonRotationMatrix = mat4.create();
 
@@ -526,13 +501,31 @@ function main() {
     gl.clearDepth(1.0);                 // Clear everything
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 
+    // Create a projection matrix, a special matrix that is
+    // used to simulate the distortion of perspective in a camera.
+    // Our field of view is 45 degrees, with a width/height
+    // ratio that matches the display size of the canvas
+    // and we only want to see objects between 0.1 units
+    // and 100 units away from the camera.
+    const projectionMatrix = mat4.create();
 
-    //TODO: set up lighting and mouse movement
+    mat4.perspective(
+      projectionMatrix,
+      45 * Math.PI / 180, // field of view
+      gl.canvas.clientWidth / gl.canvas.clientHeight, // aspect
+      0.1,   // zNear
+      100    // zFar
+    );
+
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.uProjectionMatrix,
+      false,
+      projectionMatrix
+    );
 
     setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
     setupVertexAttrib(gl, buffers.moonVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
     setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
-
 
 
     var then = 0;
