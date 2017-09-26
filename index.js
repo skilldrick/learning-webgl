@@ -288,28 +288,14 @@ function main() {
     // the center of the scene.
     const modelViewMatrix = mat4.create();
 
-    // Rotate around x axis (pitch)
-    mat4.rotate(
-      modelViewMatrix,  // destination matrix
-      modelViewMatrix,  // matrix to rotate
-      degToRad(-pitch), // amount to rotate in radians
-      [1, 0, 0]         // axis to rotate around (x axis)
-    );
-
-    // Rotate around y axis (yaw)
-    mat4.rotate(
-      modelViewMatrix,  // destination matrix
-      modelViewMatrix,  // matrix to rotate
-      degToRad(-yaw), // amount to rotate in radians
-      [0, 1, 0]         // axis to rotate around (y axis)
-    );
-
     // Translate back by 6
     mat4.translate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to translate
       [0, 0, -6]       // translate z by 6
     );
+
+    mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
     const normalMatrix = mat3.create()
     mat3.fromMat4(normalMatrix, modelViewMatrix);
@@ -350,25 +336,17 @@ function main() {
     return degrees * Math.PI / 180;
   }
 
-  var pitch = 0;
-  var pitchRate = 0;
 
-  var yaw = 0;
-  var yawRate = 0;
-  var touchYaw = 0;
-
-  var xPos = 0;
-  var yPos = 0.4;
-  var zPos =  10;
-
-  var speed = 0;
-  var touchSpeed = 0;
-  var strafe = 0;
+  const moonRotationMatrix = mat4.create();
 
   const currentlyPressedKeys = {};
 
   // add event listeners
   (function () {
+    var mouseDown = false;
+    var lastMouseX = null;
+    var lastMouseY = null;
+
     document.addEventListener('keydown', function (e) {
       currentlyPressedKeys[e.key] = true;
     });
@@ -377,98 +355,110 @@ function main() {
       currentlyPressedKeys[e.key] = false;
     });
 
-    var previousTouch = null;
+    canvas.addEventListener('mousedown', function (e) {
+      mouseDown = true;
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+    });
+
+    document.addEventListener('mouseup', function (e) {
+      mouseDown = false;
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!mouseDown) {
+        return;
+      }
+
+      const newX = event.clientX;
+      const newY = event.clientY;
+
+      const deltaX = newX - lastMouseX;
+      const deltaY = newY - lastMouseY;
+
+      updateMoonRotation(deltaX, deltaY);
+
+      lastMouseX = newX;
+      lastMouseY = newY;
+    });
 
     canvas.addEventListener('touchstart', function (e) {
       e.preventDefault();
-      previousTouch = null;
+
+      mouseDown = true;
+      const touch = e.touches[0];
+      lastMouseX = touch.clientX;
+      lastMouseY = touch.clientY;
+    });
+
+    document.addEventListener('touchend', function (e) {
+      e.preventDefault();
+
+      mouseDown = false;
     });
 
     canvas.addEventListener('touchmove', function (e) {
       e.preventDefault();
 
-      const touch = e.touches[0];
-      const currentTouch = { x: touch.clientX, y: touch.clientY };
-
-      if (previousTouch) {
-        touchSpeed = (currentTouch.y - previousTouch.y) / 100;
-        touchYaw = (currentTouch.x - previousTouch.x) / 100;
-
-        // Only set one of these at a time
-        if (Math.abs(touchSpeed) > Math.abs(touchYaw)) {
-          touchYaw = 0;
-        } else {
-          touchSpeed = 0;
-        }
+      if (!mouseDown) {
+        return;
       }
 
-      previousTouch = currentTouch;
-    });
+      const touch = e.touches[0];
+      const newX = touch.clientX;
+      const newY = touch.clientY;
 
-    document.addEventListener('touchend', function (e) {
-      e.preventDefault();
-      touchSpeed = 0;
-      touchYaw = 0;
-    });
+      const deltaX = newX - lastMouseX;
+      const deltaY = newY - lastMouseY;
 
+      updateMoonRotation(deltaX, deltaY);
+
+      lastMouseX = newX;
+      lastMouseY = newY;
+
+    });
   })()
+
+  function updateMoonRotation(deltaX, deltaY) {
+    const newRotationMatrix = mat4.create();
+
+    mat4.rotate(
+      newRotationMatrix,
+      newRotationMatrix,
+      degToRad(deltaX / 10),
+      [0, 1, 0]
+    );
+
+    mat4.rotate(
+      newRotationMatrix,
+      newRotationMatrix,
+      degToRad(deltaY / 10),
+      [1, 0, 0]
+    );
+
+    mat4.multiply(moonRotationMatrix, newRotationMatrix, moonRotationMatrix);
+  }
 
   function handleInput() {
     if (currentlyPressedKeys['ArrowLeft']) {
-      yawRate = 0.1;
     } else if (currentlyPressedKeys['ArrowRight']) {
-      yawRate = -0.1;
-    } else if (touchYaw) {
-      yawRate = (touchYaw > 0) ? 0.1 : -0.1;
     } else {
-      yawRate = 0;
     }
 
     if (currentlyPressedKeys['ArrowUp']) {
-      pitchRate = 0.1;
     } else if (currentlyPressedKeys['ArrowDown']) {
-      pitchRate = -0.1;
     } else {
-      pitchRate = 0;
     }
 
     if (currentlyPressedKeys['a']) {
-      strafe = 0.003;
     } else if (currentlyPressedKeys['d']) {
-      strafe = -0.003;
     } else {
-      strafe = 0;
     }
 
     if (currentlyPressedKeys['w']) {
-      speed = 0.003;
     } else if (currentlyPressedKeys['s']) {
-      speed = -0.003;
-    } else if (touchSpeed) {
-      speed = (touchSpeed > 0) ? 0.003 : -0.003;
     } else {
-      speed = 0;
     }
-  }
-
-  // Used to make us "jog" up and down as we move forward.
-  var joggingAngle = 0;
-
-  function animate(deltaTime) {
-    if (speed !== 0 || strafe !== 0) {
-      xPos -= Math.sin(degToRad(yaw)) * speed * deltaTime;
-      zPos -= Math.cos(degToRad(yaw)) * speed * deltaTime;
-      xPos -= Math.sin(degToRad(yaw + 90)) * strafe * deltaTime;
-      zPos -= Math.cos(degToRad(yaw + 90)) * strafe * deltaTime;
-
-      joggingAngle += deltaTime * 0.6; // 0.6 "fiddle factor" - makes it feel more realistic :-)
-      yPos = Math.sin(degToRad(joggingAngle)) / 20 + 0.4
-    }
-
-    yaw += yawRate * deltaTime;
-    pitch += pitchRate * deltaTime;
-
-    pitch = Math.min(Math.max(pitch, -75), 75);
   }
 
   function createProgramInfo(gl, vsSource, fsSource, attribs, uniforms) {
@@ -555,8 +545,6 @@ function main() {
       handleInput();
 
       drawScene(gl, programInfo, buffers);
-
-      animate(deltaTime);
 
       requestAnimationFrame(render);
     }
