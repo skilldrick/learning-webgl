@@ -431,6 +431,7 @@ function main() {
     withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
       mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(cubeAngle), [0, 1, 0]);
       mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
+      mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
       setMatrixUniforms(gl, programInfo, modelViewMatrix);
 
