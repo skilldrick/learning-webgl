@@ -181,6 +181,16 @@ function main() {
     };
   }
 
+  function loadTextures(gl, textures) {
+    const output = {};
+
+    Object.keys(textures).forEach(key => {
+      output[key] = loadTexture(gl, textures[key]);
+    });
+
+    return output;
+  }
+
   function loadTexture(gl, url) {
     function isPowerOf2(value) {
       return (value & (value - 1)) == 0;
@@ -236,7 +246,10 @@ function main() {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       }
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
     };
+
 
     image.src = url;
 
@@ -264,7 +277,7 @@ function main() {
     gl.enableVertexAttribArray(attribLocation);
   }
 
-  function drawScene(gl, programInfo, buffers) {
+  function drawScene(gl, programInfo, textures, buffers) {
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -297,6 +310,10 @@ function main() {
       false,
       modelViewMatrix
     );
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textures.moon);
+    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
     const lightingDirection = [-1, -1, -1];
     const adjustedLightingDirection = vec3.create();
@@ -480,22 +497,17 @@ function main() {
 
     const buffers = initBuffers(gl);
 
-    const texture = loadTexture(
+    const textures = loadTextures(
       gl,
-      "moon.gif"
+      {
+        crate: "crate.gif",
+        moon: "moon.gif"
+      }
       //"https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
     );
 
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
-
-    // Tell WebGL we want to affect texture unit 0
-    gl.activeTexture(gl.TEXTURE0);
-
-    // Bind the texture to texture unit 0
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to 100% opaque black
     gl.clearDepth(1.0);                 // Clear everything
@@ -537,7 +549,7 @@ function main() {
 
       handleInput();
 
-      drawScene(gl, programInfo, buffers);
+      drawScene(gl, programInfo, textures, buffers);
 
       requestAnimationFrame(render);
     }
