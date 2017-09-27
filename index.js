@@ -29,14 +29,19 @@ function main() {
     varying highp vec3 vLightWeighting;
 
     void main() {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      highp vec4 modelViewPosition = uModelViewMatrix * aVertexPosition;
+      gl_Position = uProjectionMatrix * modelViewPosition;
       vTextureCoord = aTextureCoord;
 
-      highp vec3 ambientColor = vec3(0.2, 0.2, 0.3);
-      highp vec3 directionalColor = vec3(0.8, 0.8, 0.7);
+      highp vec3 ambientColor = vec3(0.2, 0.2, 0.2);
+      highp vec3 pointLightingLocation = vec3(0, 0, -20);
+      highp vec3 pointLightingColor = vec3(0.8, 0.8, 0.7);
+
+      highp vec3 lightDirection = normalize(pointLightingLocation - modelViewPosition.xyz);
       highp vec3 transformedNormal = uNormalMatrix * aVertexNormal;
-      float directionalLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);
-      vLightWeighting = ambientColor + directionalColor * directionalLightWeighting;
+
+      float directionalLightWeighting = max(dot(transformedNormal, lightDirection), 0.0);
+      vLightWeighting = ambientColor + pointLightingColor * directionalLightWeighting;
     }
   `;
 
@@ -410,12 +415,6 @@ function main() {
       gl.bindTexture(gl.TEXTURE_2D, textures.moon);
       gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
-      const lightingDirection = [-1, -1, -1];
-      const adjustedLightingDirection = vec3.create();
-      vec3.normalize(adjustedLightingDirection, lightingDirection);
-      vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
-      gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
-
       setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
       setupVertexAttrib(gl, buffers.moonVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
       setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
@@ -438,12 +437,6 @@ function main() {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, textures.crate);
       gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-      const lightingDirection = [-1, -1, -1];
-      const adjustedLightingDirection = vec3.create();
-      vec3.normalize(adjustedLightingDirection, lightingDirection);
-      vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
-      gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
 
       setupVertexAttrib(gl, buffers.cubeVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
       setupVertexAttrib(gl, buffers.cubeVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
@@ -634,7 +627,7 @@ function main() {
       vsSource,
       fsSource,
       ['aVertexPosition', 'aTextureCoord', 'aVertexNormal'],
-      ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uLightingDirection', 'uSampler']
+      ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uSampler']
     );
 
     const buffers = initBuffers(gl);
