@@ -13,8 +13,8 @@ function main() {
     return;
   }
 
-  // Vertex shader program
-  const vsSource = `
+  // Per-vertex vertex shader
+  const perVertexVertexShaderSource = `
     attribute vec4 aVertexPosition;
     attribute vec3 aVertexNormal;
     attribute vec2 aTextureCoord;
@@ -34,7 +34,7 @@ function main() {
       vTextureCoord = aTextureCoord;
 
       highp vec3 ambientColor = vec3(0.2, 0.2, 0.2);
-      highp vec3 pointLightingLocation = vec3(0, 0, -20);
+      highp vec3 pointLightingLocation = vec3(0, 0, -5);
       highp vec3 pointLightingColor = vec3(0.8, 0.8, 0.7);
 
       highp vec3 lightDirection = normalize(pointLightingLocation - modelViewPosition.xyz);
@@ -45,8 +45,29 @@ function main() {
     }
   `;
 
-  // Fragment shader
-  const fsSource = `
+  const perFragmentVertexShaderSource = `
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uModelViewMatrix;
+    uniform mat4 uProjectionMatrix;
+    uniform mat3 uNormalMatrix;
+
+    varying highp vec2 vTextureCoord;
+    varying highp vec3 vTransformedNormal;
+    varying highp vec4 vPosition;
+
+    void main() {
+      vPosition = uModelViewMatrix * vec4(aVertexPosition, 1);
+      gl_Position = uProjectionMatrix * vPosition;
+      vTextureCoord = aTextureCoord;
+      vTransformedNormal = uNormalMatrix * aVertexNormal;
+    }
+  `;
+
+  // Per-vertex fragment shader
+  const perVertexFragmentShaderSource = `
     varying highp vec2 vTextureCoord;
     varying highp vec3 vLightWeighting;
 
@@ -58,7 +79,33 @@ function main() {
     }
   `;
 
-  function initShaderProgram(gl, vsSource, fsSource) {
+  const perFragmentFragmentShaderSource = `
+    precision highp float;
+
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+
+    vec3 ambientColor = vec3(0.2, 0.2, 0.2);
+    vec3 pointLightingLocation = vec3(0, 0, -5);
+    vec3 pointLightingColor = vec3(0.8, 0.8, 0.7);
+
+    uniform sampler2D uSampler;
+
+    void main() {
+      vec3 lightDirection = normalize(pointLightingLocation - vPosition.xyz);
+
+      float directionalLightWeighting = max(dot(normalize(vTransformedNormal), lightDirection), 0.0);
+      vec3 lightWeighting = ambientColor + pointLightingColor * directionalLightWeighting;
+
+      vec4 fragmentColor = texture2D(uSampler, vTextureCoord);
+
+      gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+    }
+  `;
+
+
+  function initShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
     function loadShader(type, source) {
       // create a new shader object of type `type`
       const shader = gl.createShader(type);
@@ -79,8 +126,8 @@ function main() {
       return shader;
     }
 
-    const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
-    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
 
     // create shader program
     const shaderProgram = gl.createProgram();
@@ -137,7 +184,7 @@ function main() {
 
     const latitudeBands = 50;
     const longitudeBands = 50;
-    const radius = 2;
+    const radius = 1;
 
     const vertexPositionData = [];
     const normalData = [];
@@ -390,23 +437,56 @@ function main() {
   }
 
   function drawScene(gl, programInfo, textures, buffers) {
+    //TODO: switch to currentProgram
+    // Tell WebGL to use our program when drawing
+    gl.useProgram(programInfo.program);
+
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // Create a projection matrix, a special matrix that is
+    // used to simulate the distortion of perspective in a camera.
+    // Our field of view is 45 degrees, with a width/height
+    // ratio that matches the display size of the canvas
+    // and we only want to see objects between 0.1 units
+    // and 100 units away from the camera.
+    const projectionMatrix = mat4.create();
+
+    mat4.perspective(
+      projectionMatrix,
+      45 * Math.PI / 180, // field of view
+      gl.canvas.clientWidth / gl.canvas.clientHeight, // aspect
+      0.1,   // zNear
+      100    // zFar
+    );
+
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.uProjectionMatrix,
+      false,
+      projectionMatrix
+    );
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
     let modelViewMatrix = mat4.create();
 
-    // Translate back by 20
+    // Translate back by 5
     mat4.translate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to translate
-      [0, 0, -20]      // translate z
+      [0, 0, -5]       // translate z
+    );
+
+    mat4.rotate(
+      modelViewMatrix,
+      modelViewMatrix,
+      degToRad(30),
+      [1, 0, 0]
     );
 
     withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
       mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(moonAngle), [0, 1, 0]);
-      mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
+      mat4.translate(modelViewMatrix, modelViewMatrix, [2, 0, 0]);
       mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
       setMatrixUniforms(gl, programInfo, modelViewMatrix);
@@ -430,7 +510,7 @@ function main() {
 
     withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
       mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(cubeAngle), [0, 1, 0]);
-      mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
+      mat4.translate(modelViewMatrix, modelViewMatrix, [1.25, 0, 0]);
       mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
       setMatrixUniforms(gl, programInfo, modelViewMatrix);
@@ -581,8 +661,8 @@ function main() {
     }
   }
 
-  function createProgramInfo(gl, vsSource, fsSource, attribs, uniforms) {
-    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+  function createProgramInfo(gl, vertexShaderSource, fragmentShaderSource, attribs, uniforms) {
+    const shaderProgram = initShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
 
     function objectFromArray(arr, func) {
       return arr.reduce((obj, name) => {
@@ -625,8 +705,8 @@ function main() {
   function setup() {
     const programInfo = createProgramInfo(
       gl,
-      vsSource,
-      fsSource,
+      perFragmentVertexShaderSource,
+      perFragmentFragmentShaderSource,
       ['aVertexPosition', 'aTextureCoord', 'aVertexNormal'],
       ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uSampler']
     );
@@ -636,40 +716,15 @@ function main() {
     const textures = loadTextures(
       gl,
       {
-        crate: "crate.gif",
-        moon: "moon.gif"
+        crate: "https://s3-us-west-2.amazonaws.com/skilldrick-webgl/crate2.jpg",
+        moon: "https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
       }
-      //"https://s3-us-west-2.amazonaws.com/skilldrick-webgl/moon.gif"
     );
-
-    // Tell WebGL to use our program when drawing
-    gl.useProgram(programInfo.program);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to 100% opaque black
     gl.clearDepth(1.0);                 // Clear everything
     gl.enable(gl.DEPTH_TEST);           // Enable depth testing
 
-    // Create a projection matrix, a special matrix that is
-    // used to simulate the distortion of perspective in a camera.
-    // Our field of view is 45 degrees, with a width/height
-    // ratio that matches the display size of the canvas
-    // and we only want to see objects between 0.1 units
-    // and 100 units away from the camera.
-    const projectionMatrix = mat4.create();
-
-    mat4.perspective(
-      projectionMatrix,
-      45 * Math.PI / 180, // field of view
-      gl.canvas.clientWidth / gl.canvas.clientHeight, // aspect
-      0.1,   // zNear
-      100    // zFar
-    );
-
-    gl.uniformMatrix4fv(
-      programInfo.uniformLocations.uProjectionMatrix,
-      false,
-      projectionMatrix
-    );
 
 
 
