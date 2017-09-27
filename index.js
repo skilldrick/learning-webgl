@@ -301,6 +301,8 @@ function main() {
     );
 
     withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
+      mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(moonAngle), [0, 1, 0]);
+      mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
       mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
       const normalMatrix = mat3.create()
@@ -498,6 +500,14 @@ function main() {
     };
   }
 
+  let moonAngle = 180;
+  let cubeAngle = 0;
+
+  function animate(deltaTime) {
+    moonAngle += 0.05 * deltaTime;
+    cubeAngle += 0.05 * deltaTime;
+  }
+
   function setup() {
     const programInfo = createProgramInfo(
       gl,
@@ -558,11 +568,9 @@ function main() {
     function render(now) {
       const deltaTime = now - then;
       then = now;
-
       handleInput();
-
       drawScene(gl, programInfo, textures, buffers);
-
+      animate(deltaTime);
       requestAnimationFrame(render);
     }
 
