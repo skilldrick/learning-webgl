@@ -277,52 +277,64 @@ function main() {
     gl.enableVertexAttribArray(attribLocation);
   }
 
+  // Functional matrix push/pop
+  function withCopyOfMatrix(mat, cb) {
+    const copy = mat4.create();
+    mat4.copy(copy, mat);
+    cb(copy);
+  }
+
   function drawScene(gl, programInfo, textures, buffers) {
+    const modelViewMatrixStack = [];
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
-    const modelViewMatrix = mat4.create();
+    let modelViewMatrix = mat4.create();
 
-    // Translate back by 6
+    // Translate back by 20
     mat4.translate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to translate
-      [0, 0, -6]       // translate z by 6
+      [0, 0, -20]       // translate z
     );
 
-    mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
+    withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
+      mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
-    const normalMatrix = mat3.create()
-    mat3.fromMat4(normalMatrix, modelViewMatrix);
-    mat3.invert(normalMatrix, normalMatrix);
-    mat3.transpose(normalMatrix, normalMatrix);
+      const normalMatrix = mat3.create()
+      mat3.fromMat4(normalMatrix, modelViewMatrix);
+      mat3.invert(normalMatrix, normalMatrix);
+      mat3.transpose(normalMatrix, normalMatrix);
 
-    gl.uniformMatrix3fv(
-      programInfo.uniformLocations.uNormalMatrix,
-      false,
-      normalMatrix
-    );
+      gl.uniformMatrix3fv(
+        programInfo.uniformLocations.uNormalMatrix,
+        false,
+        normalMatrix
+      );
 
-    gl.uniformMatrix4fv(
-      programInfo.uniformLocations.uModelViewMatrix,
-      false,
-      modelViewMatrix
-    );
+      gl.uniformMatrix4fv(
+        programInfo.uniformLocations.uModelViewMatrix,
+        false,
+        modelViewMatrix
+      );
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, textures.moon);
-    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, textures.moon);
+      gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
 
-    const lightingDirection = [-1, -1, -1];
-    const adjustedLightingDirection = vec3.create();
-    vec3.normalize(adjustedLightingDirection, lightingDirection);
-    vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
-    gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
+      const lightingDirection = [-1, -1, -1];
+      const adjustedLightingDirection = vec3.create();
+      vec3.normalize(adjustedLightingDirection, lightingDirection);
+      vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
+      gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
-    gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
+      gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+
+    });
+
   }
 
   function degToRad(degrees) {
