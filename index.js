@@ -120,12 +120,12 @@ function main() {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
 
       // load current buffer with contents of array, converted to Uint16Array
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(array), gl.STATIC_DRAW);
 
       // the index buffer only contains one component per vertex
       buffer.numComponents = 1;
 
-      buffer.numItems = indexData.length;
+      buffer.numItems = array.length;
 
       return buffer;
     }
@@ -173,11 +173,92 @@ function main() {
       }
     }
 
+    /*
+           f-----g
+          /|    /|
+      1 d-----c  |
+        |  |  |  |
+     y  |  e--|--h   -1
+        | /   | /      z
+     -1 a-----b    1
+           x
+       -1      1
+    */
+
+    const a = [-1, -1,  1];
+    const b = [ 1, -1,  1];
+    const c = [ 1,  1,  1];
+    const d = [-1,  1,  1];
+    const e = [-1, -1, -1];
+    const f = [-1,  1, -1];
+    const g = [ 1,  1, -1];
+    const h = [ 1, -1, -1];
+
+    // Faces are defined in counter-clockwise order, which means
+    // the "front" of the face.
+    const cubeVertexPositionBuffer = createBufferFrom2DArray([
+      a, b, c, d, // Front face
+      e, f, g, h, // Back face
+      f, d, c, g, // Top face
+      e, h, b, a, // Bottom face
+      h, g, c, b, // Right face
+      e, a, d, f, // Left face
+    ]);
+
+    const bl = [0, 0];
+    const tl = [1, 0];
+    const tr = [1, 1];
+    const br = [0, 1];
+
+    // defined this way to match positions array
+    const cubeVertexTextureCoordBuffer = createBufferFrom2DArray([
+      bl, tl, tr, br, // Front
+      bl, tl, tr, br, // Back
+      bl, tl, tr, br, // Top
+      bl, tl, tr, br, // Bottom
+      bl, tl, tr, br, // Right
+      bl, tl, tr, br, // Left
+    ]);
+
+    const outward = [0, 0, 1];
+    const inward  = [0, 0, -1];
+    const up      = [0, 1, 0];
+    const down    = [0, -1, 0];
+    const right   = [1, 0, 0];
+    const left    = [-1, 0, 0];
+
+    // defined this way to match positions array
+    const cubeVertexNormalBuffer = createBufferFrom2DArray([
+      outward, outward, outward, outward, // Front
+      inward, inward, inward, inward,     // Back
+      up, up, up, up,                     // Top
+      down, down, down, down,             // Bottom
+      right, right, right, right,         // Right
+      left, left, left, left,             // Left
+    ]);
+
+    // This array defines each face as two triangles, using the indices into the
+    // vertex array to specify each triangle's position.
+    // E.g. 0, 1, 2 is the triangle abc and 0, 2, 3 is acd
+    // This enables us to reuse vertices to draw more than one triangle.
+    const cubeVertexIndexBuffer = createIndexBufferFromArray([
+      0,  1,  2,   0,  2,  3,  // front
+      4,  5,  6,   4,  6,  7,  // back
+      8,  9,  10,  8,  10, 11, // top
+      12, 13, 14,  12, 14, 15, // bottom
+      16, 17, 18,  16, 18, 19, // right
+      20, 21, 22,  20, 22, 23, // left
+    ]);
+
     return {
       moonVertexPositionBuffer: createBufferFrom2DArray(vertexPositionData),
       moonVertexNormalBuffer: createBufferFrom2DArray(normalData),
       moonVertexTextureCoordBuffer: createBufferFrom2DArray(textureCoordData),
       moonVertexIndexBuffer: createIndexBufferFromArray(indexData),
+      cubeVertexPositionBuffer,
+      cubeVertexTextureCoordBuffer,
+      cubeVertexNormalBuffer,
+      cubeVertexIndexBuffer,
     };
   }
 
@@ -284,8 +365,26 @@ function main() {
     cb(copy);
   }
 
+  function setMatrixUniforms(gl, programInfo, modelViewMatrix) {
+    const normalMatrix = mat3.create()
+    mat3.fromMat4(normalMatrix, modelViewMatrix);
+    mat3.invert(normalMatrix, normalMatrix);
+    mat3.transpose(normalMatrix, normalMatrix);
+
+    gl.uniformMatrix3fv(
+      programInfo.uniformLocations.uNormalMatrix,
+      false,
+      normalMatrix
+    );
+
+    gl.uniformMatrix4fv(
+      programInfo.uniformLocations.uModelViewMatrix,
+      false,
+      modelViewMatrix
+    );
+  }
+
   function drawScene(gl, programInfo, textures, buffers) {
-    const modelViewMatrixStack = [];
     // Clear canvas before drawing
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -297,7 +396,7 @@ function main() {
     mat4.translate(
       modelViewMatrix, // destination matrix
       modelViewMatrix, // matrix to translate
-      [0, 0, -20]       // translate z
+      [0, 0, -20]      // translate z
     );
 
     withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
@@ -305,22 +404,7 @@ function main() {
       mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
       mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
-      const normalMatrix = mat3.create()
-      mat3.fromMat4(normalMatrix, modelViewMatrix);
-      mat3.invert(normalMatrix, normalMatrix);
-      mat3.transpose(normalMatrix, normalMatrix);
-
-      gl.uniformMatrix3fv(
-        programInfo.uniformLocations.uNormalMatrix,
-        false,
-        normalMatrix
-      );
-
-      gl.uniformMatrix4fv(
-        programInfo.uniformLocations.uModelViewMatrix,
-        false,
-        modelViewMatrix
-      );
+      setMatrixUniforms(gl, programInfo, modelViewMatrix);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, textures.moon);
@@ -332,11 +416,47 @@ function main() {
       vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
       gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
 
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
-      gl.drawElements(gl.TRIANGLES, buffers.moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+      setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
+      setupVertexAttrib(gl, buffers.moonVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
+      setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
 
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.moonVertexIndexBuffer);
+      gl.drawElements(
+        gl.TRIANGLES,
+        buffers.moonVertexIndexBuffer.numItems,
+        gl.UNSIGNED_SHORT,
+        0
+      );
     });
 
+    withCopyOfMatrix(modelViewMatrix, function (modelViewMatrix) {
+      mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(cubeAngle), [0, 1, 0]);
+      mat4.translate(modelViewMatrix, modelViewMatrix, [5, 0, 0]);
+
+      setMatrixUniforms(gl, programInfo, modelViewMatrix);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, textures.crate);
+      gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+      const lightingDirection = [-1, -1, -1];
+      const adjustedLightingDirection = vec3.create();
+      vec3.normalize(adjustedLightingDirection, lightingDirection);
+      vec3.scale(adjustedLightingDirection, adjustedLightingDirection, -1);
+      gl.uniform3fv(programInfo.uniformLocations.uLightingDirection, adjustedLightingDirection);
+
+      setupVertexAttrib(gl, buffers.cubeVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
+      setupVertexAttrib(gl, buffers.cubeVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
+      setupVertexAttrib(gl, buffers.cubeVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.cubeVertexIndexBuffer);
+      gl.drawElements(
+        gl.TRIANGLES,
+        buffers.cubeVertexIndexBuffer.numItems,
+        gl.UNSIGNED_SHORT,
+        0
+      );
+    });
   }
 
   function degToRad(degrees) {
@@ -557,9 +677,8 @@ function main() {
       projectionMatrix
     );
 
-    setupVertexAttrib(gl, buffers.moonVertexTextureCoordBuffer, programInfo.attribLocations.aTextureCoord);
-    setupVertexAttrib(gl, buffers.moonVertexNormalBuffer, programInfo.attribLocations.aVertexNormal);
-    setupVertexAttrib(gl, buffers.moonVertexPositionBuffer, programInfo.attribLocations.aVertexPosition);
+
+
 
 
     var then = 0;
