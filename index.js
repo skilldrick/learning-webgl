@@ -437,7 +437,6 @@ function main() {
   }
 
   function drawScene(gl, programInfo, textures, buffers) {
-    //TODO: switch to currentProgram
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
 
@@ -556,9 +555,13 @@ function main() {
     });
 
     canvas.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+
       mouseDown = true;
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
+
+      switchProgramInfo();
     });
 
     document.addEventListener('mouseup', function (e) {
@@ -589,6 +592,8 @@ function main() {
       const touch = e.touches[0];
       lastMouseX = touch.clientX;
       lastMouseY = touch.clientY;
+
+      switchProgramInfo();
     });
 
     document.addEventListener('touchend', function (e) {
@@ -696,6 +701,7 @@ function main() {
 
   let moonAngle = 180;
   let cubeAngle = 0;
+  let switchProgramInfo;
 
   function animate(deltaTime) {
     moonAngle += 0.05 * deltaTime;
@@ -703,13 +709,32 @@ function main() {
   }
 
   function setup() {
-    const programInfo = createProgramInfo(
+    const perFragmentProgramInfo = createProgramInfo(
       gl,
       perFragmentVertexShaderSource,
       perFragmentFragmentShaderSource,
       ['aVertexPosition', 'aTextureCoord', 'aVertexNormal'],
       ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uSampler']
     );
+
+    const perVertexProgramInfo = createProgramInfo(
+      gl,
+      perVertexVertexShaderSource,
+      perVertexFragmentShaderSource,
+      ['aVertexPosition', 'aTextureCoord', 'aVertexNormal'],
+      ['uProjectionMatrix', 'uModelViewMatrix', 'uNormalMatrix', 'uSampler']
+    );
+
+    let currentProgramInfo = perFragmentProgramInfo;
+
+    // this is a gross way to do it but (shrug)
+    switchProgramInfo = function () {
+      currentProgramInfo =
+        (currentProgramInfo == perVertexProgramInfo) ?
+          perFragmentProgramInfo :
+          perVertexProgramInfo;
+    }
+
 
     const buffers = initBuffers(gl);
 
@@ -737,7 +762,7 @@ function main() {
       const deltaTime = now - then;
       then = now;
       handleInput();
-      drawScene(gl, programInfo, textures, buffers);
+      drawScene(gl, currentProgramInfo, textures, buffers);
       animate(deltaTime);
       requestAnimationFrame(render);
     }
