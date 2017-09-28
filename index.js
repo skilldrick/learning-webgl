@@ -41,7 +41,7 @@ function main() {
       vTextureCoord = aTextureCoord;
 
       highp vec3 ambientColor = vec3(0.2, 0.2, 0.2);
-      highp vec3 pointLightingLocation = vec3(-30, -30, -30);
+      highp vec3 pointLightingLocation = vec3(0, 0, -5);
       highp vec3 pointLightingColor = vec3(0.8, 0.8, 0.7);
 
       highp vec3 lightDirection = normalize(pointLightingLocation - modelViewPosition.xyz);
@@ -105,9 +105,21 @@ function main() {
     void main() {
       vec3 lightDirection = normalize(pointLightingLocation - vPosition.xyz);
       vec3 normal = normalize(vTransformedNormal);
+      vec3 eyeDirection = normalize(-vPosition.xyz);
+      vec3 reflectionDirection = reflect(-lightDirection, normal);
+      float specularLightWeighting = pow(
+        max(
+          dot(reflectionDirection, eyeDirection),
+          0.0
+        ),
+        materialShininess
+      );
 
-      float directionalLightWeighting = max(dot(normal, lightDirection), 0.0);
-      vec3 lightWeighting = ambientColor + pointLightingDiffuseColor * directionalLightWeighting;
+      float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
+
+      vec3 lightWeighting = ambientColor +
+        pointLightingSpecularColor * specularLightWeighting +
+        pointLightingDiffuseColor * diffuseLightWeighting;
 
       vec4 fragmentColor = texture2D(uSampler, vTextureCoord);
 
@@ -368,7 +380,7 @@ function main() {
       [0, 0, -40]       // translate z
     );
 
-    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(moonAngle), [0, 1, 0]);
+    mat4.rotate(modelViewMatrix, modelViewMatrix, degToRad(teapotAngle), [0, 1, 0]);
     mat4.multiply(modelViewMatrix, modelViewMatrix, moonRotationMatrix);
 
     setMatrixUniforms(gl, programInfo, modelViewMatrix);
@@ -557,13 +569,11 @@ function main() {
     };
   }
 
-  let moonAngle = 180;
-  let cubeAngle = 0;
+  let teapotAngle = 180;
   let switchProgramInfo;
 
   function animate(deltaTime) {
-    moonAngle += 0.05 * deltaTime;
-    cubeAngle += 0.05 * deltaTime;
+    teapotAngle += 0.05 * deltaTime;
   }
 
   function setup() {
