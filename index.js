@@ -213,7 +213,40 @@ function main() {
       earthVertexNormalBuffer: createBufferFrom2DArray(normalData),
       earthVertexTextureCoordBuffer: createBufferFrom2DArray(textureCoordData),
       earthVertexIndexBuffer: createIndexBufferFromArray(indexData),
+      rttFrameBuffer: initTextureFrameBuffer(gl),
     };
+  }
+
+  function initTextureFramebuffer(gl) {
+    const width = 512;
+    const height = 512;
+
+    const rttFrameBuffer = gl.createFrameBuffer();
+    gl.bindFrameBuffer(gl.FRAME_BUFFER, rttFrameBuffer);
+
+    rttFramebuffer.width = width;
+    rttFramebuffer.height = height;
+
+    const rttTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, rttTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+    gl.generateMipmap(gl.TEXTURE_2D);
+
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+    const renderbuffer = gl.createRenderbuffer();
+    gl.bindRenderBuffer(gl.RENDERBUFFER, renderbuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rttTexture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return rttFrameBuffer;
   }
 
   function loadTextures(gl) {
@@ -336,7 +369,16 @@ function main() {
     );
   }
 
+  function drawSceneOnLaptopScreen(gl) {
+
+  }
+
   function drawScene(gl, programInfo, textures, buffers) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, buffers.rttFramebuffer);
+    drawSceneOnLaptopScreen(gl);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
 
